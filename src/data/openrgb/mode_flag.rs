@@ -1,12 +1,11 @@
 use std::mem::size_of;
 
-use async_trait::async_trait;
 use flagset::{flags, FlagSet};
 
-use crate::data::{OpenRGBReadable, OpenRGBWritable};
-use crate::OpenRGBError;
-use crate::OpenRGBError::ProtocolError;
-use crate::protocol::{OpenRGBReadableStream, OpenRGBWritableStream};
+use crate::data::{TryFromStream, Writable};
+use crate::protocol::{ReadableStream, WritableStream};
+use crate::OpenRgbError;
+use crate::OpenRgbError::ProtocolError;
 
 flags! {
     /// RGB controller mode flags.
@@ -48,22 +47,29 @@ flags! {
     }
 }
 
-#[async_trait]
-impl OpenRGBWritable for FlagSet<ModeFlag> {
+impl Writable for FlagSet<ModeFlag> {
     fn size(&self, _protocol: u32) -> usize {
         size_of::<u32>()
     }
 
-    async fn write(self, stream: &mut impl OpenRGBWritableStream, protocol: u32) -> Result<(), OpenRGBError> {
+    async fn try_write(
+        self,
+        stream: &mut impl WritableStream,
+        protocol: u32,
+    ) -> Result<(), OpenRgbError> {
         stream.write_value(self.bits(), protocol).await
     }
 }
 
-#[async_trait]
-impl OpenRGBReadable for FlagSet<ModeFlag> {
-    async fn read(stream: &mut impl OpenRGBReadableStream, protocol: u32) -> Result<Self, OpenRGBError> {
+impl TryFromStream for FlagSet<ModeFlag> {
+    async fn try_read(
+        stream: &mut impl ReadableStream,
+        protocol: u32,
+    ) -> Result<Self, OpenRgbError> {
         let value = stream.read_value(protocol).await?;
-        FlagSet::<ModeFlag>::new(value).map_err(|e| ProtocolError(format!("Received invalid mode flag set: {} ({})", value, e)))
+        FlagSet::<ModeFlag>::new(value).map_err(|e| {
+            ProtocolError(format!("Received invalid mode flag set: {} ({})", value, e))
+        })
     }
 }
 
@@ -74,22 +80,25 @@ mod tests {
     use flagset::FlagSet;
     use tokio_test::io::Builder;
 
-    use ModeFlag::*;
     use crate::data::ModeFlag;
+    use ModeFlag::*;
 
-    use crate::DEFAULT_PROTOCOL;
-    use crate::protocol::{OpenRGBReadableStream, OpenRGBWritableStream};
+    use crate::protocol::{ReadableStream, WritableStream};
     use crate::tests::setup;
+    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
         setup()?;
 
-        let mut stream = Builder::new()
-            .read(&154_u32.to_le_bytes())
-            .build();
+        let mut stream = Builder::new().read(&154_u32.to_le_bytes()).build();
 
-        assert_eq!(stream.read_value::<FlagSet<ModeFlag>>(DEFAULT_PROTOCOL).await?, HasDirectionLR | HasDirectionHV | HasBrightness | HasRandomColor);
+        assert_eq!(
+            stream
+                .read_value::<FlagSet<ModeFlag>>(DEFAULT_PROTOCOL)
+                .await?,
+            HasDirectionLR | HasDirectionHV | HasBrightness | HasRandomColor
+        );
 
         Ok(())
     }
@@ -98,11 +107,11 @@ mod tests {
     async fn test_write_001() -> Result<(), Box<dyn Error>> {
         setup()?;
 
-        let mut stream = Builder::new()
-            .write(&31_u32.to_le_bytes())
-            .build();
+        let mut stream = Builder::new().write(&31_u32.to_le_bytes()).build();
 
-        stream.write_value(HasDirection | HasSpeed | HasBrightness, DEFAULT_PROTOCOL).await?;
+        stream
+            .write_value(HasDirection | HasSpeed | HasBrightness, DEFAULT_PROTOCOL)
+            .await?;
 
         Ok(())
     }

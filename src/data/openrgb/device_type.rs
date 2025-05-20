@@ -1,11 +1,10 @@
 use std::mem::size_of;
 
-use async_trait::async_trait;
 use num_traits::FromPrimitive;
 
-use crate::data::{OpenRGBReadable, OpenRGBWritable};
-use crate::OpenRGBError;
-use crate::protocol::{OpenRGBReadableStream, OpenRGBWritableStream};
+use crate::data::{TryFromStream, Writable};
+use crate::protocol::{ReadableStream, WritableStream};
+use crate::OpenRgbError;
 
 /// RGB controller device type.
 ///
@@ -58,20 +57,25 @@ pub enum DeviceType {
     Unknown = 14,
 }
 
-#[async_trait]
-impl OpenRGBWritable for DeviceType {
+impl Writable for DeviceType {
     fn size(&self, _protocol: u32) -> usize {
         size_of::<u32>()
     }
 
-    async fn write(self, stream: &mut impl OpenRGBWritableStream, protocol: u32) -> Result<(), OpenRGBError> {
+    async fn try_write(
+        self,
+        stream: &mut impl WritableStream,
+        protocol: u32,
+    ) -> Result<(), OpenRgbError> {
         stream.write_value(self as u32, protocol).await
     }
 }
 
-#[async_trait]
-impl OpenRGBReadable for DeviceType {
-    async fn read(stream: &mut impl OpenRGBReadableStream, protocol: u32) -> Result<Self, OpenRGBError> {
+impl TryFromStream for DeviceType {
+    async fn try_read(
+        stream: &mut impl ReadableStream,
+        protocol: u32,
+    ) -> Result<Self, OpenRgbError> {
         Ok(DeviceType::from_u32(stream.read_value(protocol).await?).unwrap_or(DeviceType::Unknown))
     }
 }
@@ -83,19 +87,20 @@ mod tests {
     use tokio_test::io::Builder;
 
     use crate::data::DeviceType;
-    use crate::DEFAULT_PROTOCOL;
-    use crate::protocol::{OpenRGBReadableStream, OpenRGBWritableStream};
+    use crate::protocol::{ReadableStream, WritableStream};
     use crate::tests::setup;
+    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
         setup()?;
 
-        let mut stream = Builder::new()
-            .read(&8_u32.to_le_bytes())
-            .build();
+        let mut stream = Builder::new().read(&8_u32.to_le_bytes()).build();
 
-        assert_eq!(stream.read_value::<DeviceType>(DEFAULT_PROTOCOL).await?, DeviceType::Headset);
+        assert_eq!(
+            stream.read_value::<DeviceType>(DEFAULT_PROTOCOL).await?,
+            DeviceType::Headset
+        );
 
         Ok(())
     }
@@ -104,11 +109,11 @@ mod tests {
     async fn test_write_001() -> Result<(), Box<dyn Error>> {
         setup()?;
 
-        let mut stream = Builder::new()
-            .write(&8_u32.to_le_bytes())
-            .build();
+        let mut stream = Builder::new().write(&8_u32.to_le_bytes()).build();
 
-        stream.write_value(DeviceType::Headset, DEFAULT_PROTOCOL).await?;
+        stream
+            .write_value(DeviceType::Headset, DEFAULT_PROTOCOL)
+            .await?;
 
         Ok(())
     }

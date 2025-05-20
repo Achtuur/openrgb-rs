@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Errors returned by [OpenRGB client](crate::OpenRGB).
 #[derive(Error, Debug)]
-pub enum OpenRGBError {
+pub enum OpenRgbError {
     /// Failed opening connection to OpenRGB server.
     #[error("Failed opening connection to OpenRGB server at {addr:?}")]
     ConnectionError {
@@ -17,7 +17,6 @@ pub enum OpenRGBError {
     /// Communication failure with OpenRGB server.
     #[error("Failed exchanging data with OpenRGB server")]
     CommunicationError {
-
         /// Source error.
         #[source]
         #[from]
@@ -31,7 +30,6 @@ pub enum OpenRGBError {
     /// Server does not support operation.
     #[error("{operation:?} is only supported since protocol version {min_protocol_version:?}, but version {current_protocol_version:?} is in use. Try upgrading the OpenRGB server.")]
     UnsupportedOperation {
-
         /// Operation name.
         operation: String,
 

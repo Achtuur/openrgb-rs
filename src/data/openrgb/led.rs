@@ -1,8 +1,6 @@
-use async_trait::async_trait;
-
-use crate::data::OpenRGBReadable;
-use crate::OpenRGBError;
-use crate::protocol::OpenRGBReadableStream;
+use crate::data::TryFromStream;
+use crate::protocol::ReadableStream;
+use crate::OpenRgbError;
 
 /// A single LED.
 #[derive(Debug, Eq, PartialEq)]
@@ -14,9 +12,11 @@ pub struct LED {
     pub value: u32,
 }
 
-#[async_trait]
-impl OpenRGBReadable for LED {
-    async fn read(stream: &mut impl OpenRGBReadableStream, protocol: u32) -> Result<Self, OpenRGBError> {
+impl TryFromStream for LED {
+    async fn try_read(
+        stream: &mut impl ReadableStream,
+        protocol: u32,
+    ) -> Result<Self, OpenRgbError> {
         Ok(LED {
             name: stream.read_value(protocol).await?,
             value: stream.read_value(protocol).await?,
@@ -31,9 +31,9 @@ mod tests {
     use tokio_test::io::Builder;
 
     use crate::data::LED;
-    use crate::DEFAULT_PROTOCOL;
-    use crate::protocol::OpenRGBReadableStream;
+    use crate::protocol::ReadableStream;
     use crate::tests::setup;
+    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -45,7 +45,13 @@ mod tests {
             .read(&45_u32.to_le_bytes())
             .build();
 
-        assert_eq!(stream.read_value::<LED>(DEFAULT_PROTOCOL).await?, LED { name: "test".to_string(), value: 45 });
+        assert_eq!(
+            stream.read_value::<LED>(DEFAULT_PROTOCOL).await?,
+            LED {
+                name: "test".to_string(),
+                value: 45
+            }
+        );
 
         Ok(())
     }

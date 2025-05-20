@@ -1,20 +1,27 @@
 use std::mem::size_of;
 
-use async_trait::async_trait;
+use crate::data::{TryFromStream, Writable};
+use crate::protocol::{ReadableStream, WritableStream};
+use crate::OpenRgbError;
+use crate::OpenRgbError::ProtocolError;
 
-use crate::data::{OpenRGBReadable, OpenRGBWritable};
-use crate::OpenRGBError;
-use crate::OpenRGBError::ProtocolError;
-use crate::protocol::{OpenRGBReadableStream, OpenRGBWritableStream};
-
-#[async_trait]
-impl<T: OpenRGBWritable> OpenRGBWritable for Vec<T> {
+impl<T: Writable> Writable for Vec<T> {
     fn size(&self, protocol: u32) -> usize {
         size_of::<u16>() + self.iter().map(|e| e.size(protocol)).sum::<usize>()
     }
 
-    async fn write(self, stream: &mut impl OpenRGBWritableStream, protocol: u32) -> Result<(), OpenRGBError> {
-        stream.write_value(u16::try_from(self.len()).map_err(|e| ProtocolError(format!("Vec is too large to encode: {}", e)))?, protocol).await?;
+    async fn try_write(
+        self,
+        stream: &mut impl WritableStream,
+        protocol: u32,
+    ) -> Result<(), OpenRgbError> {
+        stream
+            .write_value(
+                u16::try_from(self.len())
+                    .map_err(|e| ProtocolError(format!("Vec is too large to encode: {}", e)))?,
+                protocol,
+            )
+            .await?;
         for elem in self {
             stream.write_value(elem, protocol).await?;
         }
@@ -22,9 +29,11 @@ impl<T: OpenRGBWritable> OpenRGBWritable for Vec<T> {
     }
 }
 
-#[async_trait]
-impl<T: OpenRGBReadable> OpenRGBReadable for Vec<T> {
-    async fn read(stream: &mut impl OpenRGBReadableStream, protocol: u32) -> Result<Self, OpenRGBError> {
+impl<T: TryFromStream> TryFromStream for Vec<T> {
+    async fn try_read(
+        stream: &mut impl ReadableStream,
+        protocol: u32,
+    ) -> Result<Self, OpenRgbError> {
         let len = stream.read_value::<u16>(protocol).await? as usize;
         let mut vec = Vec::with_capacity(len);
         for _ in 0..len {
@@ -40,9 +49,9 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::{DEFAULT_PROTOCOL};
-    use crate::protocol::{OpenRGBReadableStream, OpenRGBWritableStream};
+    use crate::protocol::{ReadableStream, WritableStream};
     use crate::tests::setup;
+    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -53,7 +62,10 @@ mod tests {
             .read(&[37_u8, 54_u8, 126_u8])
             .build();
 
-        assert_eq!(stream.read_value::<Vec<u8>>(DEFAULT_PROTOCOL).await?, vec![37_u8, 54_u8, 126_u8]);
+        assert_eq!(
+            stream.read_value::<Vec<u8>>(DEFAULT_PROTOCOL).await?,
+            vec![37_u8, 54_u8, 126_u8]
+        );
 
         Ok(())
     }
@@ -67,7 +79,9 @@ mod tests {
             .write(&[37_u8, 54_u8, 126_u8])
             .build();
 
-        stream.write_value(vec![37_u8, 54_u8, 126_u8], DEFAULT_PROTOCOL).await?;
+        stream
+            .write_value(vec![37_u8, 54_u8, 126_u8], DEFAULT_PROTOCOL)
+            .await?;
 
         Ok(())
     }

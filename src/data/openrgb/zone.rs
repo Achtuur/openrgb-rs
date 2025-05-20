@@ -1,9 +1,8 @@
 use array2d::Array2D;
-use async_trait::async_trait;
 
-use crate::data::{OpenRGBReadable, ZoneType};
-use crate::OpenRGBError;
-use crate::protocol::OpenRGBReadableStream;
+use crate::data::{TryFromStream, ZoneType};
+use crate::protocol::ReadableStream;
+use crate::OpenRgbError;
 
 /// RGB controller zone.
 ///
@@ -29,9 +28,11 @@ pub struct Zone {
     pub matrix: Option<Array2D<u32>>,
 }
 
-#[async_trait]
-impl OpenRGBReadable for Zone {
-    async fn read(stream: &mut impl OpenRGBReadableStream, protocol: u32) -> Result<Self, OpenRGBError> {
+impl TryFromStream for Zone {
+    async fn try_read(
+        stream: &mut impl ReadableStream,
+        protocol: u32,
+    ) -> Result<Self, OpenRgbError> {
         let name = stream.read_value(protocol).await?;
         let r#type = stream.read_value(protocol).await?;
         let leds_min = stream.read_value(protocol).await?;
@@ -49,7 +50,7 @@ impl OpenRGBReadable for Zone {
                     matrix_data.push(stream.read_value(protocol).await?);
                 }
                 Array2D::from_row_major(&matrix_data, matrix_height, matrix_width)
-            })
+            }),
         };
         Ok(Zone {
             name,
@@ -70,9 +71,9 @@ mod tests {
     use tokio_test::io::Builder;
 
     use crate::data::{Zone, ZoneType};
-    use crate::DEFAULT_PROTOCOL;
-    use crate::protocol::OpenRGBReadableStream;
+    use crate::protocol::ReadableStream;
     use crate::tests::setup;
+    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -88,14 +89,17 @@ mod tests {
             .read(&0_u16.to_le_bytes()) // matrix_len
             .build();
 
-        assert_eq!(stream.read_value::<Zone>(DEFAULT_PROTOCOL).await?, Zone {
-            name: "test".to_string(),
-            r#type: ZoneType::Linear,
-            leds_min: 3,
-            leds_max: 18,
-            leds_count: 15,
-            matrix: None,
-        });
+        assert_eq!(
+            stream.read_value::<Zone>(DEFAULT_PROTOCOL).await?,
+            Zone {
+                name: "test".to_string(),
+                r#type: ZoneType::Linear,
+                leds_min: 3,
+                leds_max: 18,
+                leds_count: 15,
+                matrix: None,
+            }
+        );
 
         Ok(())
     }
@@ -122,14 +126,17 @@ mod tests {
             .read(&5_u32.to_le_bytes()) // matrix[5]
             .build();
 
-        assert_eq!(stream.read_value::<Zone>(DEFAULT_PROTOCOL).await?, Zone {
-            name: "test".to_string(),
-            r#type: ZoneType::Linear,
-            leds_min: 3,
-            leds_max: 18,
-            leds_count: 15,
-            matrix: Some(Array2D::from_rows(&[vec![0, 1, 2], vec![3, 4, 5]])),
-        });
+        assert_eq!(
+            stream.read_value::<Zone>(DEFAULT_PROTOCOL).await?,
+            Zone {
+                name: "test".to_string(),
+                r#type: ZoneType::Linear,
+                leds_min: 3,
+                leds_max: 18,
+                leds_count: 15,
+                matrix: Some(Array2D::from_rows(&[vec![0, 1, 2], vec![3, 4, 5]])),
+            }
+        );
 
         Ok(())
     }

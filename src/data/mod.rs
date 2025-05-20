@@ -1,53 +1,35 @@
 //! OpenRGB data types.
 //!
 //! See [OpenRGB SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation) for more information.
-use async_trait::async_trait;
 
 pub use color::*;
-pub use color_mode::*;
-pub use controller::*;
-pub use device_type::*;
-pub use direction::*;
-pub use led::*;
-pub use mode::*;
-pub use mode_flag::*;
-#[doc(hidden)]
-pub use packet::*;
-pub use primitive::*;
-pub use string::*;
-pub use tuple::*;
-pub use vec::*;
-pub use zone::*;
-pub use zone_type::*;
+pub use implement::*;
+pub use openrgb::*;
 
-use crate::OpenRGBError;
-use crate::protocol::{OpenRGBReadableStream, OpenRGBWritableStream};
+use crate::protocol::{ReadableStream, WritableStream};
+use crate::OpenRgbError;
 
-mod controller;
-mod direction;
-mod color_mode;
-mod device_type;
-mod zone_type;
-mod mode_flag;
-mod mode;
-mod zone;
-mod led;
 mod color;
-mod string;
-mod vec;
-mod primitive;
-mod tuple;
-mod packet;
+mod implement;
+mod openrgb;
 
-#[async_trait]
+/// Things that can read from stream to construct itself
+/// TryFromStream is actually what it is
 #[doc(hidden)]
-pub trait OpenRGBReadable: Sized + Send + Sync {
-    async fn read(stream: &mut impl OpenRGBReadableStream, protocol: u32) -> Result<Self, OpenRGBError>;
+pub trait TryFromStream: Sized + Send + Sync {
+    async fn try_read(
+        stream: &mut impl ReadableStream,
+        protocol: u32,
+    ) -> Result<Self, OpenRgbError>;
 }
 
-#[async_trait]
+/// Things that can write itself to a stream
 #[doc(hidden)]
-pub trait OpenRGBWritable: Sized + Send + Sync {
+pub trait Writable: Sized + Send + Sync {
     fn size(&self, protocol: u32) -> usize;
-    async fn write(self, stream: &mut impl OpenRGBWritableStream, protocol: u32) -> Result<(), OpenRGBError>;
+    async fn try_write(
+        self,
+        stream: &mut impl WritableStream,
+        protocol: u32,
+    ) -> Result<(), OpenRgbError>;
 }
