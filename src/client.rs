@@ -12,7 +12,7 @@ use crate::protocol::{OpenRgbStream, PacketId};
 use crate::{OpenRgbError, OpenRgbResult};
 
 /// Default protocol version used by [OpenRGB] client.
-pub static DEFAULT_PROTOCOL: u32 = 3;
+pub static DEFAULT_PROTOCOL: u32 = 5;
 
 /// Default address used by [OpenRGB::connect].
 pub static DEFAULT_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::LOCALHOST, 6742);
@@ -89,6 +89,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
                 DEFAULT_PROTOCOL,
             )
             .await?;
+        println!("req_protocol: {0:?}", req_protocol);
         let protocol = DEFAULT_PROTOCOL.min(req_protocol);
 
         debug!(

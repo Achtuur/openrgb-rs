@@ -45,6 +45,12 @@ pub struct Controller {
     /// Controller colors.
     pub colors: Vec<Color>,
 
+    /// Alternate names for LEDs (?)
+    pub led_alt_names: Vec<String>,
+
+    /// flags (probably internal field that is exposed for some reason)
+    pub flags: u32,
+
     /// not in protocol, but given by the request used to get this controller
     pub id: u32,
 }
@@ -71,6 +77,8 @@ impl TryFromStream for Controller {
         let zones = stream.read_value(protocol).await?;
         let leds = stream.read_value(protocol).await?;
         let colors = stream.read_value(protocol).await?;
+        let led_alt_names = stream.read_value(protocol).await?;
+        let flags = stream.read_value(protocol).await?;
 
         Ok(Controller {
             device_type,
@@ -85,6 +93,8 @@ impl TryFromStream for Controller {
             zones,
             leds,
             colors,
+            led_alt_names,
+            flags,
             id: u32::MAX,
         })
     }
@@ -149,6 +159,8 @@ mod tests {
             stream.read_value::<Controller>(DEFAULT_PROTOCOL).await?,
             Controller {
                 id: 0,
+                led_alt_names: Vec::new(),
+                flags: 0,
                 device_type: DeviceType::Cooler,
                 name: "Thermaltake Riing".to_string(),
                 vendor: "Thermaltake".to_string(),
@@ -295,6 +307,8 @@ mod tests {
                         leds_max: 20,
                         leds_count: 0,
                         matrix: None,
+                        segments: Vec::new(),
+                        flags: 0,
                     },
                     Zone {
                         name: "Riing Channel 2".to_string(),
@@ -303,6 +317,8 @@ mod tests {
                         leds_max: 20,
                         leds_count: 0,
                         matrix: None,
+                        segments: Vec::new(),
+                        flags: 0,
                     },
                     Zone {
                         name: "Riing Channel 3".to_string(),
@@ -311,6 +327,8 @@ mod tests {
                         leds_max: 20,
                         leds_count: 0,
                         matrix: None,
+                        segments: Vec::new(),
+                        flags: 0,
                     },
                     Zone {
                         name: "Riing Channel 4".to_string(),
@@ -319,6 +337,8 @@ mod tests {
                         leds_max: 20,
                         leds_count: 0,
                         matrix: None,
+                        segments: Vec::new(),
+                        flags: 0,
                     },
                     Zone {
                         name: "Riing Channel 5".to_string(),
@@ -327,6 +347,8 @@ mod tests {
                         leds_max: 20,
                         leds_count: 0,
                         matrix: None,
+                        segments: Vec::new(),
+                        flags: 0,
                     },
                 ],
                 leds: vec![],

@@ -9,7 +9,9 @@ use crate::OpenRgbError::ProtocolError;
 
 impl Writable for String {
     fn size(&self, _protocol: u32) -> usize {
-        self.len() + 1 + size_of::<u16>()
+        size_of::<u16>() // string is preceded by its length
+        + self.len()
+        + 1 // null terminator
     }
 
     async fn try_write(
@@ -28,7 +30,7 @@ impl TryFromStream for String {
     async fn try_read(
         stream: &mut impl ReadableStream,
         protocol: u32,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let mut buf = vec![Default::default(); stream.read_value::<u16>(protocol).await? as usize];
         stream.read_exact(&mut buf).await?;
         buf.pop();

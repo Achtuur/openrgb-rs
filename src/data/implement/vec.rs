@@ -7,7 +7,8 @@ use crate::OpenRgbError::ProtocolError;
 
 impl<T: Writable> Writable for Vec<T> {
     fn size(&self, protocol: u32) -> usize {
-        size_of::<u16>() + self.iter().map(|e| e.size(protocol)).sum::<usize>()
+        size_of::<u16>() // vec is preceded by its length
+        + self.iter().map(|e| e.size(protocol)).sum::<usize>()
     }
 
     async fn try_write(

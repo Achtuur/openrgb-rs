@@ -4,6 +4,8 @@ use crate::data::{TryFromStream, ZoneType};
 use crate::protocol::ReadableStream;
 use crate::OpenRgbError;
 
+use super::Segment;
+
 /// RGB controller zone.
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#zone-data) for more information.
@@ -23,6 +25,10 @@ pub struct Zone {
 
     /// Zone LED count.
     pub leds_count: u32,
+
+    pub segments: Vec<Segment>,
+
+    pub flags: u32,
 
     /// Zone LED matrix (if [Zone::type] is [ZoneType::Matrix]).
     ///
@@ -57,6 +63,10 @@ impl TryFromStream for Zone {
                 Array2D::from_row_major(&matrix_data, matrix_height, matrix_width)
             }),
         };
+
+        let segments = stream.read_value(protocol).await?;
+        let flags = stream.read_value(protocol).await?;
+
         Ok(Zone {
             name,
             zone_type,
@@ -64,6 +74,8 @@ impl TryFromStream for Zone {
             leds_max,
             leds_count,
             matrix,
+            segments,
+            flags,
         })
     }
 }
@@ -103,6 +115,8 @@ mod tests {
                 leds_max: 18,
                 leds_count: 15,
                 matrix: None,
+                segments: vec![],
+                flags: 0,
             }
         );
 
@@ -140,6 +154,8 @@ mod tests {
                 leds_max: 18,
                 leds_count: 15,
                 matrix: Some(Array2D::from_rows(&[vec![0, 1, 2], vec![3, 4, 5]])),
+                segments: vec![],
+                flags: 0,
             }
         );
 
