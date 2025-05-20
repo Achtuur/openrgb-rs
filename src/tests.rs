@@ -5,14 +5,14 @@ use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
 use tokio_test::io::{Builder, Mock};
 
-use crate::protocol::{ReadableStream, OpenRGBStream, WritableStream};
-use crate::{OpenRGB, OpenRgbError, DEFAULT_PROTOCOL};
+use crate::protocol::{ReadableStream, OpenRgbStream, WritableStream};
+use crate::{OpenRgbClient, OpenRgbError, DEFAULT_PROTOCOL};
 
 impl ReadableStream for Mock {}
 
 impl WritableStream for Mock {}
 
-impl OpenRGBStream for Mock {}
+impl OpenRgbStream for Mock {}
 
 static INIT_ONCE: Once = Once::new();
 
@@ -30,15 +30,15 @@ pub fn setup() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub trait OpenRGBMockBuilder<S: OpenRGBStream> {
-    async fn to_client(&mut self) -> Result<OpenRGB<S>, OpenRgbError>;
+pub trait OpenRGBMockBuilder<S: OpenRgbStream> {
+    async fn to_client(&mut self) -> Result<OpenRgbClient<S>, OpenRgbError>;
     fn negotiate_default_protocol(&mut self) -> &mut Self;
     fn negotiate_protocol(&mut self, protocol: u32) -> &mut Self;
 }
 
 impl OpenRGBMockBuilder<Mock> for Builder {
-    async fn to_client(&mut self) -> Result<OpenRGB<Mock>, OpenRgbError> {
-        OpenRGB::new(self.build()).await
+    async fn to_client(&mut self) -> Result<OpenRgbClient<Mock>, OpenRgbError> {
+        OpenRgbClient::new(self.build()).await
     }
 
     fn negotiate_default_protocol(&mut self) -> &mut Self {

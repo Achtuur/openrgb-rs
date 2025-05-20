@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+pub type OpenRgbResult<T> = std::result::Result<T, OpenRgbError>;
+
 /// Errors returned by [OpenRGB client](crate::OpenRGB).
 #[derive(Error, Debug)]
 pub enum OpenRgbError {

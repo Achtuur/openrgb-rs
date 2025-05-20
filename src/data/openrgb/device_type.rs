@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 /// RGB controller device type.
 ///
@@ -66,7 +66,7 @@ impl Writable for DeviceType {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self as u32, protocol).await
     }
 }

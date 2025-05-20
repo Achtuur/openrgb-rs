@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
 
 // FIXME buggy for non ASCII strings
@@ -16,7 +16,7 @@ impl Writable for String {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream
             .write_value((self.len() + 1) as u16, protocol)
             .await?;
@@ -49,7 +49,7 @@ impl Writable for RawString {
         self,
         stream: &mut impl WritableStream,
         _protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream
             .write_all(format!("{}\0", self.0).as_bytes())
             .await

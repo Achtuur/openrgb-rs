@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
 
 /// RGB controller color mode.
@@ -40,7 +40,7 @@ impl Writable for ColorMode {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self as u32, protocol).await
     }
 }

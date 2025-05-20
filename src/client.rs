@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
@@ -7,8 +8,8 @@ use tokio::net::{TcpStream, ToSocketAddrs};
 use tokio::sync::Mutex;
 
 use crate::data::{Color, Controller, Mode, Writable, RawString};
-use crate::protocol::{OpenRGBStream, PacketId};
-use crate::OpenRgbError;
+use crate::protocol::{OpenRgbStream, PacketId};
+use crate::{OpenRgbError, OpenRgbResult};
 
 /// Default protocol version used by [OpenRGB] client.
 pub static DEFAULT_PROTOCOL: u32 = 3;
@@ -17,12 +18,12 @@ pub static DEFAULT_PROTOCOL: u32 = 3;
 pub static DEFAULT_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::LOCALHOST, 6742);
 
 /// OpenRGB client.
-pub struct OpenRGB<S: OpenRGBStream> {
+pub struct OpenRgbClient<S: OpenRgbStream> {
     protocol: u32,
     stream: Arc<Mutex<S>>,
 }
 
-impl OpenRGB<TcpStream> {
+impl OpenRgbClient<TcpStream> {
     /// Connect to default OpenRGB server.
     ///
     /// Use [OpenRGB::connect_to] to connect to a specific server.
@@ -75,7 +76,7 @@ impl OpenRGB<TcpStream> {
     }
 }
 
-impl<S: OpenRGBStream> OpenRGB<S> {
+impl<S: OpenRgbStream> OpenRgbClient<S> {
     /// Build a new client from given stream.
     ///
     /// This constructor expects a connected, ready to use stream.
@@ -113,7 +114,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
     /// Set client name.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_set_client_name) for more information.
-    pub async fn set_name(&self, name: impl Into<String>) -> Result<(), OpenRgbError> {
+    pub async fn set_name(&self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.stream
             .lock()
             .await
@@ -137,11 +138,11 @@ impl<S: OpenRGBStream> OpenRGB<S> {
             .await
     }
 
-    /// Get controller data.
+    /// Get controller data. This also caches the obtained controller.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_controller_data) for more information.
-    pub async fn get_controller(&self, controller_id: u32) -> Result<Controller, OpenRgbError> {
-        self.stream
+    pub async fn get_controller(&mut self, controller_id: u32) -> Result<Controller, OpenRgbError> {
+        let mut c: Controller = self.stream
             .lock()
             .await
             .request(
@@ -150,13 +151,15 @@ impl<S: OpenRGBStream> OpenRGB<S> {
                 PacketId::RequestControllerData,
                 self.protocol,
             )
-            .await
+            .await?;
+        c.id = controller_id;
+        Ok(c)
     }
 
     /// Resize a controller zone.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_resizezone) for more information.
-    pub async fn resize_zone(&self, zone_id: i32, new_size: i32) -> Result<(), OpenRgbError> {
+    pub async fn resize_zone(&self, zone_id: i32, new_size: i32) -> OpenRgbResult<()> {
         self.stream
             .lock()
             .await
@@ -177,7 +180,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
         controller_id: u32,
         led_id: i32,
         color: Color,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         self.stream
             .lock()
             .await
@@ -197,7 +200,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
         &self,
         controller_id: u32,
         colors: Vec<Color>,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         self.stream
             .lock()
             .await
@@ -218,7 +221,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
         controller_id: u32,
         zone_id: u32,
         colors: Vec<Color>,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         self.stream
             .lock()
             .await
@@ -251,7 +254,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
     /// Load a profile.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_load_profile) for more information.
-    pub async fn load_profile(&self, name: impl Into<String>) -> Result<(), OpenRgbError> {
+    pub async fn load_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.check_protocol_version_profile_control()?;
         self.stream
             .lock()
@@ -268,7 +271,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
     /// Save a profile.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_save_profile) for more information.
-    pub async fn save_profile(&self, name: impl Into<String>) -> Result<(), OpenRgbError> {
+    pub async fn save_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.check_protocol_version_profile_control()?;
         self.stream
             .lock()
@@ -280,7 +283,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
     /// Delete a profile.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_delete_profile) for more information.
-    pub async fn delete_profile(&self, name: impl Into<String>) -> Result<(), OpenRgbError> {
+    pub async fn delete_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.check_protocol_version_profile_control()?;
         self.stream
             .lock()
@@ -297,7 +300,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
     /// Set custom mode.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_setcustommode) for more information.
-    pub async fn set_custom_mode(&self, controller_id: u32) -> Result<(), OpenRgbError> {
+    pub async fn set_custom_mode(&self, controller_id: u32) -> OpenRgbResult<()> {
         self.stream
             .lock()
             .await
@@ -318,7 +321,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
         controller_id: u32,
         mode_id: i32,
         mode: Mode,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         self.stream
             .lock()
             .await
@@ -338,7 +341,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
     /// Save a mode.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_savemode) for more information.
-    pub async fn save_mode(&self, controller_id: u32, mode: Mode) -> Result<(), OpenRgbError> {
+    pub async fn save_mode(&self, controller_id: u32, mode: Mode) -> OpenRgbResult<()> {
         self.check_protocol_version_saving_modes()?;
         self.stream
             .lock()
@@ -352,7 +355,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
             .await
     }
 
-    fn check_protocol_version_profile_control(&self) -> Result<(), OpenRgbError> {
+    fn check_protocol_version_profile_control(&self) -> OpenRgbResult<()> {
         if self.protocol < 2 {
             return Err(OpenRgbError::UnsupportedOperation {
                 operation: "Profile control".to_owned(),
@@ -363,7 +366,7 @@ impl<S: OpenRGBStream> OpenRGB<S> {
         Ok(())
     }
 
-    fn check_protocol_version_saving_modes(&self) -> Result<(), OpenRgbError> {
+    fn check_protocol_version_saving_modes(&self) -> OpenRgbResult<()> {
         if self.protocol < 3 {
             return Err(OpenRgbError::UnsupportedOperation {
                 operation: "Saving modes".to_owned(),

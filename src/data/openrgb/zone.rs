@@ -13,7 +13,7 @@ pub struct Zone {
     pub name: String,
 
     /// Zone type.
-    pub r#type: ZoneType,
+    pub zone_type: ZoneType,
 
     /// Zone minimum LED number.
     pub leds_min: u32,
@@ -25,6 +25,11 @@ pub struct Zone {
     pub leds_count: u32,
 
     /// Zone LED matrix (if [Zone::type] is [ZoneType::Matrix]).
+    ///
+    /// Matrix is the "position" of the LEDs in the zone relative to the top left corner.
+    ///
+    /// The value represents the LED id of the LED at that position.
+    /// A value of `u32::MAX` means that there is no led present.
     pub matrix: Option<Array2D<u32>>,
 }
 
@@ -34,7 +39,7 @@ impl TryFromStream for Zone {
         protocol: u32,
     ) -> Result<Self, OpenRgbError> {
         let name = stream.read_value(protocol).await?;
-        let r#type = stream.read_value(protocol).await?;
+        let zone_type = stream.read_value(protocol).await?;
         let leds_min = stream.read_value(protocol).await?;
         let leds_max = stream.read_value(protocol).await?;
         let leds_count = stream.read_value(protocol).await?;
@@ -54,7 +59,7 @@ impl TryFromStream for Zone {
         };
         Ok(Zone {
             name,
-            r#type,
+            zone_type,
             leds_min,
             leds_max,
             leds_count,
@@ -93,7 +98,7 @@ mod tests {
             stream.read_value::<Zone>(DEFAULT_PROTOCOL).await?,
             Zone {
                 name: "test".to_string(),
-                r#type: ZoneType::Linear,
+                zone_type: ZoneType::Linear,
                 leds_min: 3,
                 leds_max: 18,
                 leds_count: 15,
@@ -130,7 +135,7 @@ mod tests {
             stream.read_value::<Zone>(DEFAULT_PROTOCOL).await?,
             Zone {
                 name: "test".to_string(),
-                r#type: ZoneType::Linear,
+                zone_type: ZoneType::Linear,
                 leds_min: 3,
                 leds_max: 18,
                 leds_count: 15,

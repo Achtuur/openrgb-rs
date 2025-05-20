@@ -1,3 +1,5 @@
+use std::usize;
+
 use crate::data::{Color, DeviceType, Mode, TryFromStream, Zone, LED};
 use crate::protocol::ReadableStream;
 use crate::OpenRgbError;
@@ -42,6 +44,9 @@ pub struct Controller {
 
     /// Controller colors.
     pub colors: Vec<Color>,
+
+    /// not in protocol, but given by the request used to get this controller
+    pub id: u32,
 }
 
 impl TryFromStream for Controller {
@@ -80,6 +85,7 @@ impl TryFromStream for Controller {
             zones,
             leds,
             colors,
+            id: u32::MAX,
         })
     }
 }
@@ -142,6 +148,7 @@ mod tests {
         assert_eq!(
             stream.read_value::<Controller>(DEFAULT_PROTOCOL).await?,
             Controller {
+                id: 0,
                 device_type: DeviceType::Cooler,
                 name: "Thermaltake Riing".to_string(),
                 vendor: "Thermaltake".to_string(),
@@ -283,7 +290,7 @@ mod tests {
                 zones: vec![
                     Zone {
                         name: "Riing Channel 1".to_string(),
-                        r#type: ZoneType::Linear,
+                        zone_type: ZoneType::Linear,
                         leds_min: 0,
                         leds_max: 20,
                         leds_count: 0,
@@ -291,7 +298,7 @@ mod tests {
                     },
                     Zone {
                         name: "Riing Channel 2".to_string(),
-                        r#type: ZoneType::Linear,
+                        zone_type: ZoneType::Linear,
                         leds_min: 0,
                         leds_max: 20,
                         leds_count: 0,
@@ -299,7 +306,7 @@ mod tests {
                     },
                     Zone {
                         name: "Riing Channel 3".to_string(),
-                        r#type: ZoneType::Linear,
+                        zone_type: ZoneType::Linear,
                         leds_min: 0,
                         leds_max: 20,
                         leds_count: 0,
@@ -307,7 +314,7 @@ mod tests {
                     },
                     Zone {
                         name: "Riing Channel 4".to_string(),
-                        r#type: ZoneType::Linear,
+                        zone_type: ZoneType::Linear,
                         leds_min: 0,
                         leds_max: 20,
                         leds_count: 0,
@@ -315,7 +322,7 @@ mod tests {
                     },
                     Zone {
                         name: "Riing Channel 5".to_string(),
-                        r#type: ZoneType::Linear,
+                        zone_type: ZoneType::Linear,
                         leds_min: 0,
                         leds_max: 20,
                         leds_count: 0,

@@ -4,7 +4,7 @@ use rgb::RGB8;
 
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 /// RGB controller color, aliased to [rgb] crate's [RGB8] type.
 ///
@@ -33,7 +33,7 @@ impl Writable for Color {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self.r, protocol).await?;
         stream.write_value(self.g, protocol).await?;
         stream.write_value(self.b, protocol).await?;

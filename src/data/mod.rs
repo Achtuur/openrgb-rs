@@ -7,7 +7,7 @@ pub use implement::*;
 pub use openrgb::*;
 
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 mod color;
 mod implement;
@@ -31,5 +31,5 @@ pub trait Writable: Sized + Send + Sync {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError>;
+    ) -> OpenRgbResult<()>;
 }

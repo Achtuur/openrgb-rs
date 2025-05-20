@@ -3,7 +3,7 @@ use crate::protocol::ReadableStream;
 use crate::OpenRgbError;
 
 /// A single LED.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LED {
     /// LED name.
     pub name: String,

@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
 
 impl Writable for () {
@@ -14,7 +14,7 @@ impl Writable for () {
         self,
         _stream: &mut impl WritableStream,
         _protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         Ok(())
     }
 }
@@ -37,7 +37,7 @@ impl Writable for u8 {
         self,
         stream: &mut impl WritableStream,
         _protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_u8(self).await.map_err(Into::into)
     }
 }
@@ -60,7 +60,7 @@ impl Writable for u16 {
         self,
         stream: &mut impl WritableStream,
         _protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_u16_le(self).await.map_err(Into::into)
     }
 }
@@ -83,7 +83,7 @@ impl Writable for u32 {
         self,
         stream: &mut impl WritableStream,
         _protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_u32_le(self).await.map_err(Into::into)
     }
 }
@@ -106,7 +106,7 @@ impl Writable for i32 {
         self,
         stream: &mut impl WritableStream,
         _protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_i32_le(self).await.map_err(Into::into)
     }
 }
@@ -129,7 +129,7 @@ impl Writable for usize {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream
             .write_value(
                 u32::try_from(self).map_err(|e| {

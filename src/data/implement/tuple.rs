@@ -1,6 +1,6 @@
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 impl<A: Writable, B: Writable> Writable for (A, B) {
     fn size(&self, protocol: u32) -> usize {
@@ -11,7 +11,7 @@ impl<A: Writable, B: Writable> Writable for (A, B) {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self.0, protocol).await?;
         stream.write_value(self.1, protocol).await?;
         Ok(())
@@ -39,7 +39,7 @@ impl<A: Writable, B: Writable, C: Writable> Writable for (A, B, C) {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self.0, protocol).await?;
         stream.write_value(self.1, protocol).await?;
         stream.write_value(self.2, protocol).await?;
@@ -74,7 +74,7 @@ impl<A: Writable, B: Writable, C: Writable, D: Writable> Writable
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self.0, protocol).await?;
         stream.write_value(self.1, protocol).await?;
         stream.write_value(self.2, protocol).await?;

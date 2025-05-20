@@ -1,11 +1,11 @@
 use flagset::FlagSet;
 use num_traits::FromPrimitive;
 
-use crate::data::{
+use crate::{data::{
     Color, ColorMode, Direction,
     ModeFlag::{self, *},
     TryFromStream, Writable,
-};
+}, OpenRgbResult};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::OpenRgbError::{self, ProtocolError};
 
@@ -176,7 +176,7 @@ impl Writable for Mode {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self.name, protocol).await?;
         stream.write_value(self.value, protocol).await?;
         stream.write_value(self.flags, protocol).await?;

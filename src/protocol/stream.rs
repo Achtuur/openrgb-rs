@@ -4,7 +4,7 @@ use tokio::net::TcpStream;
 
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::MAGIC;
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 use super::PacketId;
 
@@ -71,7 +71,7 @@ pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
         &mut self,
         value: T,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         T::try_write(value, self, protocol).await
     }
 
@@ -81,7 +81,7 @@ pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
         device_id: u32,
         packet_id: PacketId,
         data_len: usize,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         debug!("Sending {:?} packet of {} bytes...", packet_id, data_len);
         self.write_all(&MAGIC).await?;
         self.write_value(device_id, protocol).await?;
@@ -96,7 +96,7 @@ pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
         device_id: u32,
         packet_id: PacketId,
         data: I,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         let size = data.size(protocol);
 
         // in debug builds, use intermediate buffer to ease debugging with Wireshark (see #3)
@@ -123,7 +123,7 @@ pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
     }
 }
 
-pub trait OpenRGBStream: ReadableStream + WritableStream {
+pub trait OpenRgbStream: ReadableStream + WritableStream {
     async fn request<I: Writable, O: TryFromStream>(
         &mut self,
         protocol: u32,
@@ -141,7 +141,7 @@ impl ReadableStream for TcpStream {}
 
 impl WritableStream for TcpStream {}
 
-impl OpenRGBStream for TcpStream {}
+impl OpenRgbStream for TcpStream {}
 
 #[cfg(debug_assertions)]
 impl WritableStream for Vec<u8> {}

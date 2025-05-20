@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 
 use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
 
 /// Direction for [Mode](crate::data::Mode).
@@ -44,7 +44,7 @@ impl Writable for Direction {
         self,
         stream: &mut impl WritableStream,
         protocol: u32,
-    ) -> Result<(), OpenRgbError> {
+    ) -> OpenRgbResult<()> {
         stream.write_value(self as u32, protocol).await
     }
 }
