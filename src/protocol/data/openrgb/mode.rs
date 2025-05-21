@@ -15,8 +15,8 @@ use crate::{
 /// RGB controller mode.
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#mode-data) for more information.
-#[derive(Debug, Eq, PartialEq)]
-pub struct Mode {
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ModeData {
     /// Mode name.
     pub name: String,
 
@@ -58,9 +58,12 @@ pub struct Mode {
 
     /// Mode direction.
     pub direction: Option<Direction>,
+
+    /// Index of this mode, not part of received packet but set right after reading
+    pub index: u32,
 }
 
-impl TryFromStream for Mode {
+impl TryFromStream for ModeData {
     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let value = stream.read_value().await?;
@@ -77,7 +80,8 @@ impl TryFromStream for Mode {
         let color_mode = stream.read_value().await?;
         let colors = stream.read_value::<Vec<Color>>().await?;
 
-        Ok(Mode {
+        Ok(ModeData {
+            index: u32::MAX,
             name,
             value,
             flags,
@@ -136,7 +140,7 @@ impl TryFromStream for Mode {
     }
 }
 
-impl Writable for Mode {
+impl Writable for ModeData {
     fn size(&self) -> usize {
         let mut size = 0;
         size += self.name.size();
@@ -156,39 +160,39 @@ impl Writable for Mode {
         size
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(self.name).await?;
-        stream.write_value(self.value).await?;
-        stream.write_value(self.flags).await?;
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_value(&self.name).await?;
+        stream.write_value(&self.value).await?;
+        stream.write_value(&self.flags).await?;
         stream
-            .write_value(self.speed_min.unwrap_or_default())
+            .write_value(&self.speed_min.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.speed_max.unwrap_or_default())
+            .write_value(&self.speed_max.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.brightness_min.unwrap_or_default())
+            .write_value(&self.brightness_min.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.brightness_max.unwrap_or_default())
+            .write_value(&self.brightness_max.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.colors_min.unwrap_or_default())
+            .write_value(&self.colors_min.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.colors_max.unwrap_or_default())
+            .write_value(&self.colors_max.unwrap_or_default())
             .await?;
-        stream.write_value(self.speed.unwrap_or_default()).await?;
+        stream.write_value(&self.speed.unwrap_or_default()).await?;
         stream
-            .write_value(self.brightness.unwrap_or_default())
-            .await?;
-        stream
-            .write_value(self.direction.unwrap_or_default())
+            .write_value(&self.brightness.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.color_mode.unwrap_or_default())
+            .write_value(&self.direction.unwrap_or_default())
             .await?;
-        stream.write_value(self.colors).await?;
+        stream
+            .write_value(&self.color_mode.unwrap_or_default())
+            .await?;
+        stream.write_value(&self.colors).await?;
         Ok(())
     }
 }
@@ -199,7 +203,7 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::protocol::data::{Color, ColorMode, Direction, Mode, ModeFlag::*};
+    use crate::protocol::data::{Color, ColorMode, Direction, ModeData, ModeFlag::*};
     use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
 
@@ -228,8 +232,9 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Mode>().await?,
-            Mode {
+            stream.read_value::<ModeData>().await?,
+            ModeData {
+                index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,
                 flags: HasDirection | HasSpeed | HasBrightness,
@@ -284,8 +289,9 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Mode>().await?,
-            Mode {
+            stream.read_value::<ModeData>().await?,
+            ModeData {
+                index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,
                 flags: Default::default(),
@@ -328,8 +334,9 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Mode>().await?,
-            Mode {
+            stream.read_value::<ModeData>().await?,
+            ModeData {
+                index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,
                 flags: HasDirection | HasSpeed | HasBrightness,
@@ -386,7 +393,8 @@ mod tests {
             .build();
 
         stream
-            .write_value(Mode {
+            .write_value(&ModeData {
+                index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,
                 flags: HasDirection | HasSpeed | HasBrightness,

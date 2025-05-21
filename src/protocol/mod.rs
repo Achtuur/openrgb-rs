@@ -1,14 +1,21 @@
-mod client;
-mod packet;
-mod stream;
 
 use crate::OpenRgbResult;
-pub use {client::*, packet::*, stream::*};
 
+
+mod client;
 pub(crate) mod data;
-
+mod packet;
+mod stream;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use {
+    client::*,
+    packet::*,
+    stream::*,
+};
+
+pub use data::Color;
 
 /// Things that can read from stream to construct itself
 /// TryFromStream is actually what it is
@@ -21,5 +28,15 @@ pub trait TryFromStream: Sized + Send + Sync {
 #[doc(hidden)]
 pub trait Writable: Sized + Send + Sync {
     fn size(&self) -> usize;
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()>;
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()>;
+}
+
+impl<T: Writable> Writable for &T {
+    fn size(&self) -> usize {
+        (*self).size()
+    }
+
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        (*self).try_write(stream).await
+    }
 }

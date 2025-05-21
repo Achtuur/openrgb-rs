@@ -1,22 +1,23 @@
 use std::error::Error;
 
-use openrgb::OpenRgbClientWrapper;
+use openrgb::{Color, OpenRgbClientWrapper};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // connect to local server
     let mut client = OpenRgbClientWrapper::connect().await?;
 
-    // query controllers count
-    let controllers = client.get_controller_count().await?;
-
-    // query and print each controller data
-    for controller_id in 0..controllers {
+    let controllers = client.get_all_controllers().await?;
+    for c in controllers {
         println!(
             "controller {}: {:#?}",
-            controller_id,
-            client.get_controller(controller_id).await?
+            c.id(),
+            c.name(),
         );
+        c.set_controllable_mode().await?;
+        // c.update_zone(0, Color {r: 255, g: 0, b: 0}).await?;
+        c.update_all_leds(Color {r: 255, g: 255, b: 255}).await?;
+        // c.update_led(0, Color {r: 255, g: 0, b: 0}).await?;
     }
 
     Ok(())

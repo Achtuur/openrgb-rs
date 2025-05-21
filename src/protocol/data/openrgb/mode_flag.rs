@@ -51,8 +51,8 @@ impl Writable for FlagSet<ModeFlag> {
         size_of::<u32>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(self.bits()).await
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_value(&self.bits()).await
     }
 }
 
@@ -102,7 +102,7 @@ mod tests {
         let mut stream = Builder::new().write(&31_u32.to_le_bytes()).build();
 
         stream
-            .write_value(HasDirection | HasSpeed | HasBrightness)
+            .write_value(&(HasDirection | HasSpeed | HasBrightness))
             .await?;
 
         Ok(())

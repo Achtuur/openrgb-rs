@@ -8,7 +8,7 @@ impl Writable for () {
         0
     }
 
-    async fn try_write(self, _stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, _stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         Ok(())
     }
 }
@@ -24,8 +24,8 @@ impl Writable for u8 {
         size_of::<u8>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_u8(self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_u8(*self).await.map_err(Into::into)
     }
 }
 
@@ -40,8 +40,8 @@ impl Writable for u16 {
         size_of::<u16>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_u16_le(self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_u16_le(*self).await.map_err(Into::into)
     }
 }
 
@@ -56,8 +56,8 @@ impl Writable for u32 {
         size_of::<u32>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_u32_le(self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_u32_le(*self).await.map_err(Into::into)
     }
 }
 
@@ -72,8 +72,8 @@ impl Writable for i32 {
         size_of::<i32>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_i32_le(self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_i32_le(*self).await.map_err(Into::into)
     }
 }
 
@@ -88,14 +88,14 @@ impl Writable for usize {
         size_of::<u32>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        let val = u32::try_from(self).map_err(|e| {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        let val = u32::try_from(*self).map_err(|e| {
             OpenRgbError::ProtocolError(format!(
                 "Data size is too large to encode: {} ({})",
                 self, e
             ))
         })?;
-        stream.write_value(val).await
+        stream.write_value(&val).await
     }
 }
 
@@ -127,7 +127,7 @@ mod tests {
 
         let mut stream = Builder::new().build();
 
-        stream.write_value(()).await?;
+        stream.write_value(&()).await?;
 
         Ok(())
     }
@@ -149,7 +149,7 @@ mod tests {
 
         let mut stream = Builder::new().write(&[37_u8]).build();
 
-        stream.write_value(37_u8).await?;
+        stream.write_value(&37_u8).await?;
 
         Ok(())
     }
@@ -171,7 +171,7 @@ mod tests {
 
         let mut stream = Builder::new().write(&37_u16.to_le_bytes()).build();
 
-        stream.write_value(37_u16).await?;
+        stream.write_value(&37_u16).await?;
 
         Ok(())
     }
@@ -193,7 +193,7 @@ mod tests {
 
         let mut stream = Builder::new().write(&185851_u32.to_le_bytes()).build();
 
-        stream.write_value(185851_u32).await?;
+        stream.write_value(&185851_u32).await?;
 
         Ok(())
     }
@@ -215,7 +215,7 @@ mod tests {
 
         let mut stream = Builder::new().write(&(-185851_i32).to_le_bytes()).build();
 
-        stream.write_value(-185851_i32).await?;
+        stream.write_value(&-185851_i32).await?;
 
         Ok(())
     }
@@ -237,7 +237,7 @@ mod tests {
 
         let mut stream = Builder::new().write(&185851_u32.to_le_bytes()).build();
 
-        stream.write_value(185851_usize).await?;
+        stream.write_value(&185851_usize).await?;
 
         Ok(())
     }

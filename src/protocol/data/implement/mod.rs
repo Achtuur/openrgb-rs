@@ -3,6 +3,7 @@
 mod array;
 mod primitive;
 mod string;
+mod slice;
 mod tuple;
 mod vec;
 

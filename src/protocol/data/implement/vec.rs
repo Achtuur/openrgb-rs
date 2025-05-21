@@ -5,19 +5,13 @@ use crate::{OpenRgbError, OpenRgbResult};
 
 impl<T: Writable> Writable for Vec<T> {
     fn size(&self) -> usize {
-        size_of::<u16>() // vec is preceded by its length
-        + self.iter().map(|e| e.size()).sum::<usize>()
+        self.as_slice().size()
+        // size_of::<u16>() // vec is preceded by its length
+        // + self.iter().map(|e| e.size()).sum::<usize>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream
-            .write_value(u16::try_from(self.len()).map_err(|e| {
-                OpenRgbError::ProtocolError(format!("Vec is too large to encode: {}", e))
-            })?)
-            .await?;
-        for elem in self {
-            stream.write_value(elem).await?;
-        }
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        self.as_slice().try_write(stream).await?;
         Ok(())
     }
 }
@@ -68,7 +62,7 @@ mod tests {
             .write(&[37_u8, 54_u8, 126_u8])
             .build();
 
-        stream.write_value(vec![37_u8, 54_u8, 126_u8]).await?;
+        stream.write_value(&vec![37_u8, 54_u8, 126_u8]).await?;
 
         Ok(())
     }

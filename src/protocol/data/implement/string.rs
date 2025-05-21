@@ -3,18 +3,31 @@ use std::mem::size_of;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
-// FIXME buggy for non ASCII strings
 
-impl Writable for String {
+impl Writable for &str {
     fn size(&self) -> usize {
         size_of::<u16>() // string is preceded by its length
         + self.len()
         + 1 // null terminator
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value((self.len() + 1) as u16).await?;
-        stream.write_value(RawString(self)).await
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        let padded_len = (self.len() + 1) as u16;
+        stream.write_value(&padded_len).await?;
+        // stream.write_value(&(self.len() + 1) as u16).await?;
+        stream.write_value(&RawString(self)).await
+    }
+}
+
+// FIXME buggy for non ASCII strings
+
+impl Writable for String {
+    fn size(&self) -> usize {
+       self.as_str().size()
+    }
+
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        self.as_str().try_write(stream).await
     }
 }
 
@@ -30,18 +43,21 @@ impl TryFromStream for String {
 }
 
 #[doc(hidden)]
-pub struct RawString(pub String);
+pub struct RawString<'a>(pub &'a str);
 
-impl Writable for RawString {
+impl<'a> Writable for RawString<'a> {
     fn size(&self) -> usize {
-        self.0.len() + 1
+        self.0.len() + 1 // null terminator
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream
-            .write_all(format!("{}\0", self.0).as_bytes())
-            .await
-            .map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_all(self.0.as_bytes()).await?;
+        stream.write_all(b"\0").await?;
+        Ok(())
+        // stream
+        //     .write_all(format!("{}\0", self.0).as_bytes())
+        //     .await
+        //     .map_err(Into::into)
     }
 }
 
@@ -51,7 +67,7 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::protocol::data::RawString;
+    use crate::protocol::data::implement::string::RawString;
     use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
 
@@ -78,7 +94,7 @@ mod tests {
             .write(b"test\0")
             .build();
 
-        stream.write_value("test".to_string()).await?;
+        stream.write_value(&"test").await?;
 
         Ok(())
     }
@@ -89,7 +105,7 @@ mod tests {
 
         let mut stream = Builder::new().write(b"test\0").build();
 
-        stream.write_value(RawString("test".to_string())).await?;
+        stream.write_value(&RawString("test")).await?;
 
         Ok(())
     }

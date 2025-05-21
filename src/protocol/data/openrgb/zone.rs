@@ -4,13 +4,18 @@ use crate::OpenRgbResult;
 use crate::protocol::data::ZoneType;
 use crate::protocol::{ReadableStream, TryFromStream};
 
-use super::Segment;
+use super::SegmentData;
 
 /// RGB controller zone.
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#zone-data) for more information.
-#[derive(Debug, Eq, PartialEq)]
-pub struct Zone {
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ZoneData {
+    /// Id of this zone.
+    ///
+    /// Not part of the packet, but set right after reading
+    /// since the sender knows the zone id.
+    pub id: u32,
     /// Zone name.
     pub name: String,
 
@@ -26,7 +31,7 @@ pub struct Zone {
     /// Zone LED count.
     pub leds_count: u32,
 
-    pub segments: Vec<Segment>,
+    pub segments: Vec<SegmentData>,
 
     pub flags: u32,
 
@@ -39,7 +44,7 @@ pub struct Zone {
     pub matrix: Option<Array2D<u32>>,
 }
 
-impl TryFromStream for Zone {
+impl TryFromStream for ZoneData {
     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let zone_type = stream.read_value().await?;
@@ -64,7 +69,8 @@ impl TryFromStream for Zone {
         let segments = stream.read_value().await?;
         let flags = stream.read_value().await?;
 
-        Ok(Zone {
+        Ok(ZoneData {
+            id: u32::MAX,
             name,
             zone_type,
             leds_min,
@@ -85,7 +91,7 @@ mod tests {
     use tokio_test::io::Builder;
 
     use crate::protocol::ReadableStream;
-    use crate::protocol::data::{Zone, ZoneType};
+    use crate::protocol::data::{ZoneData, ZoneType};
     use crate::protocol::tests::setup;
 
     #[tokio::test]
@@ -103,8 +109,8 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Zone>().await?,
-            Zone {
+            stream.read_value::<ZoneData>().await?,
+            ZoneData {
                 name: "test".to_string(),
                 zone_type: ZoneType::Linear,
                 leds_min: 3,
@@ -113,6 +119,7 @@ mod tests {
                 matrix: None,
                 segments: vec![],
                 flags: 0,
+                id: u32::MAX,
             }
         );
 
@@ -142,8 +149,8 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Zone>().await?,
-            Zone {
+            stream.read_value::<ZoneData>().await?,
+            ZoneData {
                 name: "test".to_string(),
                 zone_type: ZoneType::Linear,
                 leds_min: 3,
@@ -152,6 +159,7 @@ mod tests {
                 matrix: Some(Array2D::from_rows(&[vec![0, 1, 2], vec![3, 4, 5]])),
                 segments: vec![],
                 flags: 0,
+                id: u32::MAX,
             }
         );
 

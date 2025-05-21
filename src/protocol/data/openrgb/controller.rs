@@ -1,14 +1,12 @@
-use std::usize;
-
 use crate::OpenRgbResult;
-use crate::protocol::data::{Color, DeviceType, LED, Mode, Zone};
+use crate::protocol::data::{Color, DeviceType, LED, ModeData, ZoneData};
 use crate::protocol::{ReadableStream, TryFromStream};
 
 /// RGB controller.
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_controller_data) for more information.
 #[derive(Debug, Eq, PartialEq)]
-pub struct Controller {
+pub struct ControllerData {
     /// Controller type.
     pub device_type: DeviceType,
 
@@ -34,10 +32,10 @@ pub struct Controller {
     pub active_mode: i32,
 
     /// Controller modes.
-    pub modes: Vec<Mode>,
+    pub modes: Vec<ModeData>,
 
     /// Controller zones.
-    pub zones: Vec<Zone>,
+    pub zones: Vec<ZoneData>,
 
     /// Controller LEDs.
     pub leds: Vec<LED>,
@@ -55,7 +53,7 @@ pub struct Controller {
     pub id: u32,
 }
 
-impl TryFromStream for Controller {
+impl TryFromStream for ControllerData {
     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let _data_size = stream.read_value::<u32>().await?;
         let device_type = stream.read_value().await?;
@@ -68,16 +66,23 @@ impl TryFromStream for Controller {
         let num_modes = stream.read_value::<u16>().await?;
         let active_mode = stream.read_value().await?;
         let mut modes = Vec::with_capacity(num_modes as usize);
-        for _ in 0..num_modes {
-            modes.push(stream.read_value().await?);
+        for idx in 0..num_modes {
+            let mut mode: ModeData = stream.read_value().await?;
+            mode.index = idx as u32;
+            modes.push(mode);
         }
-        let zones = stream.read_value().await?;
+
+        let mut zones: Vec<ZoneData> = stream.read_value().await?;
+        for (idx, zone) in zones.iter_mut().enumerate() {
+            zone.id = idx as u32;
+        }
+
         let leds = stream.read_value().await?;
         let colors = stream.read_value().await?;
         let led_alt_names = stream.read_value().await?;
         let flags = stream.read_value().await?;
 
-        Ok(Controller {
+        Ok(ControllerData {
             device_type,
             name,
             vendor,
@@ -107,7 +112,7 @@ mod tests {
 
     use crate::protocol::ReadableStream;
     use crate::protocol::data::{
-        Color, ColorMode, Controller, DeviceType, Mode, ModeFlag, Zone, ZoneType,
+        Color, ColorMode, ControllerData, DeviceType, ModeData, ModeFlag, ZoneData, ZoneType,
     };
     use crate::protocol::tests::setup;
 
@@ -154,8 +159,8 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Controller>().await?,
-            Controller {
+            stream.read_value::<ControllerData>().await?,
+            ControllerData {
                 id: 0,
                 led_alt_names: Vec::new(),
                 flags: 0,
@@ -168,7 +173,8 @@ mod tests {
                 location: "HID: /dev/hidraw10".to_string(),
                 active_mode: 0,
                 modes: vec![
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Direct".to_string(),
                         value: 24,
                         flags: HasPerLEDColor.into(),
@@ -184,7 +190,8 @@ mod tests {
                         color_mode: Some(ColorMode::PerLED),
                         colors: vec![],
                     },
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Static".to_string(),
                         value: 25,
                         flags: HasModeSpecificColor.into(),
@@ -200,7 +207,8 @@ mod tests {
                         color_mode: Some(ColorMode::ModeSpecific),
                         colors: vec![Color { r: 0, g: 0, b: 0 }],
                     },
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Flow".to_string(),
                         value: 0,
                         flags: HasSpeed.into(),
@@ -216,7 +224,8 @@ mod tests {
                         color_mode: Some(ColorMode::None),
                         colors: vec![],
                     },
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Spectrum".to_string(),
                         value: 4,
                         flags: HasSpeed.into(),
@@ -232,7 +241,8 @@ mod tests {
                         color_mode: Some(ColorMode::None),
                         colors: vec![],
                     },
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Ripple".to_string(),
                         value: 8,
                         flags: HasSpeed | HasPerLEDColor,
@@ -248,7 +258,8 @@ mod tests {
                         color_mode: Some(ColorMode::PerLED),
                         colors: vec![],
                     },
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Blink".to_string(),
                         value: 12,
                         flags: HasSpeed | HasPerLEDColor,
@@ -264,7 +275,8 @@ mod tests {
                         color_mode: Some(ColorMode::PerLED),
                         colors: vec![],
                     },
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Pulse".to_string(),
                         value: 16,
                         flags: HasSpeed | HasPerLEDColor,
@@ -280,7 +292,8 @@ mod tests {
                         color_mode: Some(ColorMode::PerLED),
                         colors: vec![],
                     },
-                    Mode {
+                    ModeData {
+                        index: u32::MAX,
                         name: "Wave".to_string(),
                         value: 20,
                         flags: HasSpeed | HasPerLEDColor,
@@ -298,7 +311,7 @@ mod tests {
                     },
                 ],
                 zones: vec![
-                    Zone {
+                    ZoneData {
                         name: "Riing Channel 1".to_string(),
                         zone_type: ZoneType::Linear,
                         leds_min: 0,
@@ -307,8 +320,9 @@ mod tests {
                         matrix: None,
                         segments: Vec::new(),
                         flags: 0,
+                        id: 0,
                     },
-                    Zone {
+                    ZoneData {
                         name: "Riing Channel 2".to_string(),
                         zone_type: ZoneType::Linear,
                         leds_min: 0,
@@ -317,8 +331,9 @@ mod tests {
                         matrix: None,
                         segments: Vec::new(),
                         flags: 0,
+                        id: 0,
                     },
-                    Zone {
+                    ZoneData {
                         name: "Riing Channel 3".to_string(),
                         zone_type: ZoneType::Linear,
                         leds_min: 0,
@@ -327,8 +342,9 @@ mod tests {
                         matrix: None,
                         segments: Vec::new(),
                         flags: 0,
+                        id: 0,
                     },
-                    Zone {
+                    ZoneData {
                         name: "Riing Channel 4".to_string(),
                         zone_type: ZoneType::Linear,
                         leds_min: 0,
@@ -337,8 +353,9 @@ mod tests {
                         matrix: None,
                         segments: Vec::new(),
                         flags: 0,
+                        id: 0,
                     },
-                    Zone {
+                    ZoneData {
                         name: "Riing Channel 5".to_string(),
                         zone_type: ZoneType::Linear,
                         leds_min: 0,
@@ -347,6 +364,7 @@ mod tests {
                         matrix: None,
                         segments: Vec::new(),
                         flags: 0,
+                        id: 0,
                     },
                 ],
                 leds: vec![],

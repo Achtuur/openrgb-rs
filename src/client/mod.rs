@@ -1,20 +1,28 @@
 //! Wrapper around the OpenRGB client to make it friendlier to use.
 use std::collections::HashMap;
 
+mod controller;
+mod zone;
+
+pub use {
+    controller::*,
+    zone::*,
+};
+
 use tokio::net::{TcpStream, ToSocketAddrs};
 
 use crate::{
     error::OpenRgbResult,
     protocol::{
         DEFAULT_ADDR, OpenRgbProtocol, OpenRgbStream,
-        data::{Controller, DeviceType, Mode},
+        data::{ControllerData, DeviceType, ModeData},
     },
 };
+
 
 pub struct OpenRgbClientWrapper<S: OpenRgbStream> {
     // todo: make this not public
     pub proto: OpenRgbProtocol<S>,
-    controller_cache: HashMap<u32, Controller>,
 }
 
 impl OpenRgbClientWrapper<TcpStream> {
@@ -64,7 +72,13 @@ impl OpenRgbClientWrapper<TcpStream> {
         let client = OpenRgbProtocol::connect_to(addr).await?;
         Ok(Self {
             proto: client,
-            controller_cache: HashMap::new(),
+        })
+    }
+
+    pub(crate) async fn connect_clone(&self) -> OpenRgbResult<Self> {
+        let client = self.proto.connect_clone().await?;
+        Ok(Self {
+            proto: client,
         })
     }
 }
@@ -72,42 +86,19 @@ impl OpenRgbClientWrapper<TcpStream> {
 impl<S: OpenRgbStream> OpenRgbClientWrapper<S> {
     pub async fn get_all_controllers(
         &mut self,
-    ) -> OpenRgbResult<impl Iterator<Item = &Controller>> {
+    ) -> OpenRgbResult<Vec<Controller<S>>> {
         let count = self.proto.get_controller_count().await?;
-        for i in 0..count {
-            if self.controller_cache.contains_key(&i) {
-                continue;
-            }
-            let controller = self.proto.get_controller(i).await?;
-            self.controller_cache.insert(i, controller);
+        let mut controllers = Vec::with_capacity(count as usize);
+        for id in 0..count {
+            let controller = self.get_controller(id).await?;
+            controllers.push(controller);
         }
-        Ok(self.controller_cache.values())
+        Ok(controllers)
     }
 
-    pub async fn get_controller(&mut self, i: u32) -> OpenRgbResult<&Controller> {
-        if self.controller_cache.contains_key(&i) {
-            return Ok(self.controller_cache.get(&i).unwrap());
-        }
-        let controller = self.proto.get_controller(i).await?;
-        self.controller_cache.insert(i, controller);
-        Ok(self.controller_cache.get(&i).unwrap())
-    }
-
-    pub async fn get_controller_by_name(&mut self, name: impl AsRef<str>) -> Option<&Controller> {
-        self.get_all_controllers()
-            .await
-            .ok()?
-            .find(|controller| controller.name == name.as_ref())
-    }
-
-    pub async fn get_controller_by_device_type(
-        &mut self,
-        device_type: &DeviceType,
-    ) -> Option<&Controller> {
-        self.get_all_controllers()
-            .await
-            .ok()?
-            .find(|controller| controller.device_type == *device_type)
+    pub async fn get_controller(&mut self, i: u32) -> OpenRgbResult<Controller<S>> {
+        let c_data = self.proto.get_controller(i).await?;
+        Ok(Controller::new(i, self.proto.clone(), c_data))
     }
 }
 
@@ -141,7 +132,7 @@ impl<S: OpenRgbStream> OpenRgbClientWrapper<S> {
         self.proto.get_controller_count().await
     }
 
-    pub async fn save_mode(&self, controller_id: u32, mode: Mode) -> OpenRgbResult<()> {
+    pub async fn save_mode(&self, controller_id: u32, mode: ModeData) -> OpenRgbResult<()> {
         self.proto.save_mode(controller_id, mode).await
     }
 }

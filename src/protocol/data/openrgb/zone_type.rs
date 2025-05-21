@@ -26,8 +26,9 @@ impl Writable for ZoneType {
         size_of::<u32>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(self as u32).await
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        let num = *self as u32;
+        stream.write_value(&num).await
     }
 }
 
@@ -67,7 +68,7 @@ mod tests {
 
         let mut stream = Builder::new().write(&1_u32.to_le_bytes()).build();
 
-        stream.write_value(ZoneType::Linear).await?;
+        stream.write_value(&ZoneType::Linear).await?;
 
         Ok(())
     }

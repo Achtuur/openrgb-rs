@@ -43,6 +43,12 @@ pub enum PacketId {
     /// RGBController::ResizeZone().
     RGBControllerResizeZone = 1000,
 
+    /// RGBController::ClearSegments().
+    RgbControllerClearSegments = 1001,
+
+    /// RGBController::AddSegment().
+    RGBControllerAddSegment = 1002,
+
     /// RGBController::UpdateLEDs().
     RGBControllerUpdateLeds = 1050,
 
@@ -67,8 +73,9 @@ impl Writable for PacketId {
         size_of::<u32>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(self as u32).await
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        let num = *self as u32;
+        stream.write_value(&num).await
     }
 }
 
@@ -121,7 +128,7 @@ mod tests {
         let mut stream = Builder::new().write(&1101_u32.to_le_bytes()).build();
 
         stream
-            .write_value(PacketId::RGBControllerUpdateMode)
+            .write_value(&PacketId::RGBControllerUpdateMode)
             .await?;
 
         Ok(())

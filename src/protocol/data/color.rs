@@ -25,11 +25,11 @@ impl Writable for Color {
         4 * size_of::<u8>()
     }
 
-    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(self.r).await?;
-        stream.write_value(self.g).await?;
-        stream.write_value(self.b).await?;
-        stream.write_value(0u8).await?;
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_value(&self.r).await?;
+        stream.write_value(&self.g).await?;
+        stream.write_value(&self.b).await?;
+        stream.write_value(&0u8).await?;
         Ok(())
     }
 }
@@ -69,7 +69,7 @@ mod tests {
         let mut stream = Builder::new().write(&[37_u8, 54_u8, 126_u8, 0_u8]).build();
 
         stream
-            .write_value(Color {
+            .write_value(&Color {
                 r: 37,
                 g: 54,
                 b: 126,

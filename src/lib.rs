@@ -31,6 +31,7 @@ extern crate num_traits;
 pub use {
     client::*,
     error::{OpenRgbError, OpenRgbResult},
+    protocol::*,
 };
 
 mod client;
