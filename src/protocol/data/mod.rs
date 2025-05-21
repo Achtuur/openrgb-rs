@@ -6,9 +6,6 @@ pub use color::*;
 pub use implement::*;
 pub use openrgb::*;
 
-use crate::protocol::{ReadableStream, WritableStream};
-use crate::{OpenRgbError, OpenRgbResult};
-
 mod color;
 mod implement;
 mod openrgb;

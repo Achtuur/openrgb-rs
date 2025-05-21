@@ -1,12 +1,11 @@
 use std::error::Error;
 
-use openrgb::OpenRGB;
+use openrgb::OpenRgbClientWrapper;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-
     // connect to local server
-    let client = OpenRGB::connect().await?;
+    let client = OpenRgbClientWrapper::connect().await?;
 
     // get profiles names
     println!("profiles: {:?}", client.get_profiles().await?);

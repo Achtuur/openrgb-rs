@@ -29,14 +29,10 @@ extern crate num_traits;
 
 #[doc(inline)]
 pub use {
-    error::{OpenRgbError, OpenRgbResult},
     client::*,
+    error::{OpenRgbError, OpenRgbResult},
 };
 
 mod client;
 mod error;
 mod protocol;
-
-
-#[cfg(test)]
-mod tests;

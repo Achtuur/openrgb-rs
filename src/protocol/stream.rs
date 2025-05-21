@@ -7,7 +7,6 @@ use crate::{OpenRgbError, OpenRgbResult};
 
 use super::{PacketId, TryFromStream, Writable};
 
-
 pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
     async fn read_value<T: TryFromStream>(&mut self) -> OpenRgbResult<T> {
         T::try_read(self).await
@@ -45,10 +44,9 @@ pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
             )));
         }
 
-        self.read_value::<u32>()
-            .await?
-            .try_into()
-            .map_err(|e| OpenRgbError::ProtocolError(format!("received invalid data length: {}", e)))
+        self.read_value::<u32>().await?.try_into().map_err(|e| {
+            OpenRgbError::ProtocolError(format!("received invalid data length: {}", e))
+        })
     }
 
     async fn read_packet<O: TryFromStream>(
@@ -64,10 +62,7 @@ pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
 }
 
 pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
-    async fn write_value<T: Writable>(
-        &mut self,
-        value: T,
-    ) -> OpenRgbResult<()> {
+    async fn write_value<T: Writable>(&mut self, value: T) -> OpenRgbResult<()> {
         T::try_write(value, self).await
     }
 
@@ -99,18 +94,15 @@ pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
             let mut buf: Vec<u8> = Vec::with_capacity(
                 4 /* magic */ + 4 /* device id */ + 4 /* packet id */ + 4 /* len */ + size, /* payload size*/
             );
-            buf.write_header(device_id, packet_id, size)
-                .await?;
+            buf.write_header(device_id, packet_id, size).await?;
             buf.write_value(data).await?;
-            println!("buf: {0:?}", buf);
             self.write_all(&buf).await?;
         }
 
         // in release builds, write directly
         #[cfg(not(debug_assertions))]
         {
-            self.write_header(device_id, packet_id, size)
-                .await?;
+            self.write_header(device_id, packet_id, size).await?;
             self.write_value(data).await?;
         }
 
@@ -125,8 +117,7 @@ pub trait OpenRgbStream: ReadableStream + WritableStream {
         packet_id: PacketId,
         data: I,
     ) -> OpenRgbResult<O> {
-        self.write_packet(device_id, packet_id, data)
-            .await?;
+        self.write_packet(device_id, packet_id, data).await?;
         self.read_packet(device_id, packet_id).await
     }
 }

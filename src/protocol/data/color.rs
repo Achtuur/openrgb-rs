@@ -2,8 +2,8 @@ use std::mem::size_of;
 
 use rgb::RGB8;
 
+use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
-use crate::{OpenRgbError, OpenRgbResult};
 
 /// RGB controller color, aliased to [rgb] crate's [RGB8] type.
 ///
@@ -11,9 +11,7 @@ use crate::{OpenRgbError, OpenRgbResult};
 pub type Color = RGB8;
 
 impl TryFromStream for Color {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let r = stream.read_value().await?;
         let g = stream.read_value().await?;
         let b = stream.read_value().await?;
@@ -27,10 +25,7 @@ impl Writable for Color {
         4 * size_of::<u8>()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self.r).await?;
         stream.write_value(self.g).await?;
         stream.write_value(self.b).await?;
@@ -45,10 +40,9 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::data::Color;
+    use crate::protocol::data::Color;
+    use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -57,7 +51,7 @@ mod tests {
         let mut stream = Builder::new().read(&[37_u8, 54_u8, 126_u8, 0_u8]).build();
 
         assert_eq!(
-            stream.read_value::<Color>(DEFAULT_PROTOCOL).await?,
+            stream.read_value::<Color>().await?,
             Color {
                 r: 37,
                 g: 54,
@@ -75,14 +69,11 @@ mod tests {
         let mut stream = Builder::new().write(&[37_u8, 54_u8, 126_u8, 0_u8]).build();
 
         stream
-            .write_value(
-                Color {
-                    r: 37,
-                    g: 54,
-                    b: 126,
-                },
-                DEFAULT_PROTOCOL,
-            )
+            .write_value(Color {
+                r: 37,
+                g: 54,
+                b: 126,
+            })
             .await?;
 
         Ok(())

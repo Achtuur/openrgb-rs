@@ -1,8 +1,8 @@
 use std::usize;
 
-use crate::protocol::data::{Color, DeviceType, Mode, Zone, LED};
+use crate::OpenRgbResult;
+use crate::protocol::data::{Color, DeviceType, LED, Mode, Zone};
 use crate::protocol::{ReadableStream, TryFromStream};
-use crate::{OpenRgbError, OpenRgbResult};
 
 /// RGB controller.
 ///
@@ -56,9 +56,7 @@ pub struct Controller {
 }
 
 impl TryFromStream for Controller {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let _data_size = stream.read_value::<u32>().await?;
         let device_type = stream.read_value().await?;
         let name = stream.read_value().await?;
@@ -107,10 +105,11 @@ mod tests {
 
     use ModeFlag::*;
 
-    use crate::data::{Color, ColorMode, Controller, DeviceType, Mode, ModeFlag, Zone, ZoneType};
     use crate::protocol::ReadableStream;
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
+    use crate::protocol::data::{
+        Color, ColorMode, Controller, DeviceType, Mode, ModeFlag, Zone, ZoneType,
+    };
+    use crate::protocol::tests::setup;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -155,7 +154,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Controller>(DEFAULT_PROTOCOL).await?,
+            stream.read_value::<Controller>().await?,
             Controller {
                 id: 0,
                 led_alt_names: Vec::new(),

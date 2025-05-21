@@ -1,11 +1,10 @@
 use std::mem::size_of;
 
-use flagset::{flags, FlagSet};
+use flagset::{FlagSet, flags};
 
-use crate::protocol::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
+use crate::protocol::{TryFromStream, Writable};
 use crate::{OpenRgbError, OpenRgbResult};
-
 
 flags! {
     /// RGB controller mode flags.
@@ -52,21 +51,19 @@ impl Writable for FlagSet<ModeFlag> {
         size_of::<u32>()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self.bits()).await
     }
 }
 
 impl TryFromStream for FlagSet<ModeFlag> {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let value = stream.read_value().await?;
         FlagSet::<ModeFlag>::new(value).map_err(|e| {
-            OpenRgbError::ProtocolError(format!("Received invalid mode flag set: {} ({})", value, e))
+            OpenRgbError::ProtocolError(format!(
+                "Received invalid mode flag set: {} ({})",
+                value, e
+            ))
         })
     }
 }
@@ -78,12 +75,11 @@ mod tests {
     use flagset::FlagSet;
     use tokio_test::io::Builder;
 
-    use crate::data::ModeFlag;
+    use crate::protocol::data::ModeFlag;
     use ModeFlag::*;
 
+    use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -92,9 +88,7 @@ mod tests {
         let mut stream = Builder::new().read(&154_u32.to_le_bytes()).build();
 
         assert_eq!(
-            stream
-                .read_value::<FlagSet<ModeFlag>>(DEFAULT_PROTOCOL)
-                .await?,
+            stream.read_value::<FlagSet<ModeFlag>>().await?,
             HasDirectionLR | HasDirectionHV | HasBrightness | HasRandomColor
         );
 
@@ -108,7 +102,7 @@ mod tests {
         let mut stream = Builder::new().write(&31_u32.to_le_bytes()).build();
 
         stream
-            .write_value(HasDirection | HasSpeed | HasBrightness, DEFAULT_PROTOCOL)
+            .write_value(HasDirection | HasSpeed | HasBrightness)
             .await?;
 
         Ok(())

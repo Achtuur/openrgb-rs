@@ -30,7 +30,9 @@ pub enum OpenRgbError {
     ProtocolError(String),
 
     /// Server does not support operation.
-    #[error("{operation:?} is only supported since protocol version {min_protocol_version:?}, but version {current_protocol_version:?} is in use. Try upgrading the OpenRGB server.")]
+    #[error(
+        "{operation:?} is only supported since protocol version {min_protocol_version:?}, but version {current_protocol_version:?} is in use. Try upgrading the OpenRGB server."
+    )]
     UnsupportedOperation {
         /// Operation name.
         operation: String,

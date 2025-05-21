@@ -1,4 +1,7 @@
-use crate::{protocol::{ReadableStream, TryFromStream, Writable, WritableStream}, OpenRgbResult};
+use crate::{
+    OpenRgbResult,
+    protocol::{ReadableStream, TryFromStream, Writable, WritableStream},
+};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Segment {
@@ -9,9 +12,7 @@ pub struct Segment {
 }
 
 impl TryFromStream for Segment {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let seg_type = stream.read_value().await?;
         let start_idx = stream.read_value().await?;
@@ -31,10 +32,7 @@ impl Writable for Segment {
         self.name.size() + self.seg_type.size() + self.start_idx.size() + self.led_count.size()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self.name).await?;
         stream.write_value(self.seg_type).await?;
         stream.write_value(self.start_idx).await?;

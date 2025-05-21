@@ -6,10 +6,4 @@ mod string;
 mod tuple;
 mod vec;
 
-pub use {
-    array::*,
-    primitive::*,
-    string::*,
-    tuple::*,
-    vec::*,
-};
+pub use string::*;

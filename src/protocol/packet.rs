@@ -2,9 +2,9 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
-use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError::{self, ProtocolError};
+use crate::OpenRgbError::ProtocolError;
 use crate::OpenRgbResult;
+use crate::protocol::{ReadableStream, WritableStream};
 
 use super::{TryFromStream, Writable};
 
@@ -67,18 +67,13 @@ impl Writable for PacketId {
         size_of::<u32>()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self as u32).await
     }
 }
 
 impl TryFromStream for PacketId {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         stream.read_value::<u32>().await.and_then(|id| {
             PacketId::from_u32(id)
                 .ok_or_else(|| ProtocolError(format!("unknown packed ID \"{}\"", id)))
@@ -93,9 +88,7 @@ mod tests {
     use num_traits::{FromPrimitive, ToPrimitive};
     use tokio_test::io::Builder;
 
-    use crate::protocol::{PacketId, ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
+    use crate::protocol::{PacketId, ReadableStream, WritableStream, tests::setup};
 
     #[test]
     fn test_convert_to_u32() {
@@ -114,7 +107,7 @@ mod tests {
         let mut stream = Builder::new().read(&1101_u32.to_le_bytes()).build();
 
         assert_eq!(
-            stream.read_value::<PacketId>(DEFAULT_PROTOCOL).await?,
+            stream.read_value::<PacketId>().await?,
             PacketId::RGBControllerUpdateMode
         );
 
@@ -128,7 +121,7 @@ mod tests {
         let mut stream = Builder::new().write(&1101_u32.to_le_bytes()).build();
 
         stream
-            .write_value(PacketId::RGBControllerUpdateMode, DEFAULT_PROTOCOL)
+            .write_value(PacketId::RGBControllerUpdateMode)
             .await?;
 
         Ok(())

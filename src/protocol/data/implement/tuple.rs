@@ -1,15 +1,12 @@
+use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
-use crate::{OpenRgbError, OpenRgbResult};
 
 impl<A: Writable, B: Writable> Writable for (A, B) {
     fn size(&self) -> usize {
         self.0.size() + self.1.size()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self.0).await?;
         stream.write_value(self.1).await?;
         Ok(())
@@ -17,9 +14,7 @@ impl<A: Writable, B: Writable> Writable for (A, B) {
 }
 
 impl<A: TryFromStream, B: TryFromStream> TryFromStream for (A, B) {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         Ok((
             stream.read_value::<A>().await?,
             stream.read_value::<B>().await?,
@@ -32,10 +27,7 @@ impl<A: Writable, B: Writable, C: Writable> Writable for (A, B, C) {
         self.0.size() + self.1.size() + self.2.size()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self.0).await?;
         stream.write_value(self.1).await?;
         stream.write_value(self.2).await?;
@@ -44,9 +36,7 @@ impl<A: Writable, B: Writable, C: Writable> Writable for (A, B, C) {
 }
 
 impl<A: TryFromStream, B: TryFromStream, C: TryFromStream> TryFromStream for (A, B, C) {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         Ok((
             stream.read_value::<A>().await?,
             stream.read_value::<B>().await?,
@@ -55,20 +45,12 @@ impl<A: TryFromStream, B: TryFromStream, C: TryFromStream> TryFromStream for (A,
     }
 }
 
-impl<A: Writable, B: Writable, C: Writable, D: Writable> Writable
-    for (A, B, C, D)
-{
+impl<A: Writable, B: Writable, C: Writable, D: Writable> Writable for (A, B, C, D) {
     fn size(&self) -> usize {
-        self.0.size()
-            + self.1.size()
-            + self.2.size()
-            + self.3.size()
+        self.0.size() + self.1.size() + self.2.size() + self.3.size()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self.0).await?;
         stream.write_value(self.1).await?;
         stream.write_value(self.2).await?;
@@ -80,9 +62,7 @@ impl<A: Writable, B: Writable, C: Writable, D: Writable> Writable
 impl<A: TryFromStream, B: TryFromStream, C: TryFromStream, D: TryFromStream> TryFromStream
     for (A, B, C, D)
 {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         Ok((
             stream.read_value::<A>().await?,
             stream.read_value::<B>().await?,
@@ -98,10 +78,9 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::data::DeviceType;
+    use crate::protocol::data::DeviceType;
+    use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -115,9 +94,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream
-                .read_value::<(u8, u32, i32, DeviceType)>(DEFAULT_PROTOCOL)
-                .await?,
+            stream.read_value::<(u8, u32, i32, DeviceType)>().await?,
             (37, 1337, -1337, DeviceType::LEDStrip)
         );
 
@@ -136,10 +113,7 @@ mod tests {
             .build();
 
         stream
-            .write_value(
-                (37_u8, 1337_u32, (-1337_i32), DeviceType::LEDStrip),
-                DEFAULT_PROTOCOL,
-            )
+            .write_value((37_u8, 1337_u32, (-1337_i32), DeviceType::LEDStrip))
             .await?;
 
         Ok(())

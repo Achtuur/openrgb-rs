@@ -3,22 +3,17 @@ use std::mem::size_of;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
-
 impl<T: Writable> Writable for Vec<T> {
     fn size(&self) -> usize {
         size_of::<u16>() // vec is preceded by its length
         + self.iter().map(|e| e.size()).sum::<usize>()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream
-            .write_value(
-                u16::try_from(self.len())
-                    .map_err(|e| OpenRgbError::ProtocolError(format!("Vec is too large to encode: {}", e)))?,
-            )
+            .write_value(u16::try_from(self.len()).map_err(|e| {
+                OpenRgbError::ProtocolError(format!("Vec is too large to encode: {}", e))
+            })?)
             .await?;
         for elem in self {
             stream.write_value(elem).await?;
@@ -28,9 +23,7 @@ impl<T: Writable> Writable for Vec<T> {
 }
 
 impl<T: TryFromStream> TryFromStream for Vec<T> {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let len = stream.read_value::<u16>().await? as usize;
         let mut vec = Vec::with_capacity(len);
         for _ in 0..len {
@@ -46,9 +39,8 @@ mod tests {
 
     use tokio_test::io::Builder;
 
+    use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -60,7 +52,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Vec<u8>>(DEFAULT_PROTOCOL).await?,
+            stream.read_value::<Vec<u8>>().await?,
             vec![37_u8, 54_u8, 126_u8]
         );
 
@@ -76,9 +68,7 @@ mod tests {
             .write(&[37_u8, 54_u8, 126_u8])
             .build();
 
-        stream
-            .write_value(vec![37_u8, 54_u8, 126_u8], DEFAULT_PROTOCOL)
-            .await?;
+        stream.write_value(vec![37_u8, 54_u8, 126_u8]).await?;
 
         Ok(())
     }

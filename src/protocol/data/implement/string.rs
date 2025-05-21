@@ -3,7 +3,6 @@ use std::mem::size_of;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
-
 // FIXME buggy for non ASCII strings
 
 impl Writable for String {
@@ -13,26 +12,20 @@ impl Writable for String {
         + 1 // null terminator
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
-        stream
-            .write_value((self.len() + 1) as u16)
-            .await?;
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+        stream.write_value((self.len() + 1) as u16).await?;
         stream.write_value(RawString(self)).await
     }
 }
 
 impl TryFromStream for String {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let mut buf = vec![Default::default(); stream.read_value::<u16>().await? as usize];
         stream.read_exact(&mut buf).await?;
         buf.pop();
-        String::from_utf8(buf)
-            .map_err(|e| OpenRgbError::ProtocolError(format!("Failed decoding string as UTF-8: {}", e)))
+        String::from_utf8(buf).map_err(|e| {
+            OpenRgbError::ProtocolError(format!("Failed decoding string as UTF-8: {}", e))
+        })
     }
 }
 
@@ -44,10 +37,7 @@ impl Writable for RawString {
         self.0.len() + 1
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream
             .write_all(format!("{}\0", self.0).as_bytes())
             .await
@@ -61,10 +51,9 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::data::RawString;
+    use crate::protocol::data::RawString;
+    use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -75,10 +64,7 @@ mod tests {
             .read(b"test\0")
             .build();
 
-        assert_eq!(
-            stream.read_value::<String>(DEFAULT_PROTOCOL).await?,
-            "test".to_string()
-        );
+        assert_eq!(stream.read_value::<String>().await?, "test".to_string());
 
         Ok(())
     }
@@ -92,9 +78,7 @@ mod tests {
             .write(b"test\0")
             .build();
 
-        stream
-            .write_value("test".to_string(), DEFAULT_PROTOCOL)
-            .await?;
+        stream.write_value("test".to_string()).await?;
 
         Ok(())
     }
@@ -105,9 +89,7 @@ mod tests {
 
         let mut stream = Builder::new().write(b"test\0").build();
 
-        stream
-            .write_value(RawString("test".to_string()), DEFAULT_PROTOCOL)
-            .await?;
+        stream.write_value(RawString("test".to_string())).await?;
 
         Ok(())
     }

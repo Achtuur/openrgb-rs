@@ -1,12 +1,16 @@
 use flagset::FlagSet;
 use num_traits::FromPrimitive;
 
-use crate::{protocol::data::{
-    Color, ColorMode, Direction,
-    ModeFlag::{self, *},
-}, protocol::{TryFromStream, Writable}, OpenRgbResult};
+use crate::OpenRgbError::ProtocolError;
 use crate::protocol::{ReadableStream, WritableStream};
-use crate::OpenRgbError::{self, ProtocolError};
+use crate::{
+    OpenRgbResult,
+    protocol::data::{
+        Color, ColorMode, Direction,
+        ModeFlag::{self, *},
+    },
+    protocol::{TryFromStream, Writable},
+};
 
 /// RGB controller mode.
 ///
@@ -57,9 +61,7 @@ pub struct Mode {
 }
 
 impl TryFromStream for Mode {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let value = stream.read_value().await?;
         let flags = stream.read_value().await?;
@@ -154,10 +156,7 @@ impl Writable for Mode {
         size
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self.name).await?;
         stream.write_value(self.value).await?;
         stream.write_value(self.flags).await?;
@@ -179,9 +178,7 @@ impl Writable for Mode {
         stream
             .write_value(self.colors_max.unwrap_or_default())
             .await?;
-        stream
-            .write_value(self.speed.unwrap_or_default())
-            .await?;
+        stream.write_value(self.speed.unwrap_or_default()).await?;
         stream
             .write_value(self.brightness.unwrap_or_default())
             .await?;
@@ -202,10 +199,9 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::data::{Color, ColorMode, Direction, Mode, ModeFlag::*};
+    use crate::protocol::data::{Color, ColorMode, Direction, Mode, ModeFlag::*};
+    use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -232,7 +228,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Mode>(DEFAULT_PROTOCOL).await?,
+            stream.read_value::<Mode>().await?,
             Mode {
                 name: "test".to_string(),
                 value: 46,
@@ -288,7 +284,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Mode>(DEFAULT_PROTOCOL).await?,
+            stream.read_value::<Mode>().await?,
             Mode {
                 name: "test".to_string(),
                 value: 46,
@@ -332,7 +328,7 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<Mode>(2).await?,
+            stream.read_value::<Mode>().await?,
             Mode {
                 name: "test".to_string(),
                 value: 46,
@@ -390,36 +386,33 @@ mod tests {
             .build();
 
         stream
-            .write_value(
-                Mode {
-                    name: "test".to_string(),
-                    value: 46,
-                    flags: HasDirection | HasSpeed | HasBrightness,
-                    speed_min: Some(10),
-                    speed_max: Some(1000),
-                    brightness_min: Some(1),
-                    brightness_max: Some(1024),
-                    colors_min: Some(0),
-                    colors_max: Some(256),
-                    speed: Some(51),
-                    brightness: Some(512),
-                    direction: Some(Direction::Horizontal),
-                    color_mode: Some(ColorMode::PerLED),
-                    colors: vec![
-                        Color {
-                            r: 37,
-                            g: 54,
-                            b: 126,
-                        },
-                        Color {
-                            r: 37,
-                            g: 54,
-                            b: 255,
-                        },
-                    ],
-                },
-                DEFAULT_PROTOCOL,
-            )
+            .write_value(Mode {
+                name: "test".to_string(),
+                value: 46,
+                flags: HasDirection | HasSpeed | HasBrightness,
+                speed_min: Some(10),
+                speed_max: Some(1000),
+                brightness_min: Some(1),
+                brightness_max: Some(1024),
+                colors_min: Some(0),
+                colors_max: Some(256),
+                speed: Some(51),
+                brightness: Some(512),
+                direction: Some(Direction::Horizontal),
+                color_mode: Some(ColorMode::PerLED),
+                colors: vec![
+                    Color {
+                        r: 37,
+                        g: 54,
+                        b: 126,
+                    },
+                    Color {
+                        r: 37,
+                        g: 54,
+                        b: 255,
+                    },
+                ],
+            })
             .await?;
 
         Ok(())

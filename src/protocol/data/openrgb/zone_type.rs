@@ -2,10 +2,9 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
-use crate::protocol::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
+use crate::protocol::{TryFromStream, Writable};
 use crate::{OpenRgbError, OpenRgbResult};
-
 
 /// RGB controller [Zone](crate::data::Zone) type.
 ///
@@ -27,18 +26,13 @@ impl Writable for ZoneType {
         size_of::<u32>()
     }
 
-    async fn try_write(
-        self,
-        stream: &mut impl WritableStream,
-    ) -> OpenRgbResult<()> {
+    async fn try_write(self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
         stream.write_value(self as u32).await
     }
 }
 
 impl TryFromStream for ZoneType {
-    async fn try_read(
-        stream: &mut impl ReadableStream,
-    ) -> OpenRgbResult<Self> {
+    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         stream.read_value().await.and_then(|id| {
             ZoneType::from_u32(id)
                 .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown zone type \"{}\"", id)))
@@ -52,10 +46,9 @@ mod tests {
 
     use tokio_test::io::Builder;
 
-    use crate::data::ZoneType;
+    use crate::protocol::data::ZoneType;
+    use crate::protocol::tests::setup;
     use crate::protocol::{ReadableStream, WritableStream};
-    use crate::tests::setup;
-    use crate::DEFAULT_PROTOCOL;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
@@ -63,10 +56,7 @@ mod tests {
 
         let mut stream = Builder::new().read(&1_u32.to_le_bytes()).build();
 
-        assert_eq!(
-            stream.read_value::<ZoneType>(DEFAULT_PROTOCOL).await?,
-            ZoneType::Linear
-        );
+        assert_eq!(stream.read_value::<ZoneType>().await?, ZoneType::Linear);
 
         Ok(())
     }
@@ -77,9 +67,7 @@ mod tests {
 
         let mut stream = Builder::new().write(&1_u32.to_le_bytes()).build();
 
-        stream
-            .write_value(ZoneType::Linear, DEFAULT_PROTOCOL)
-            .await?;
+        stream.write_value(ZoneType::Linear).await?;
 
         Ok(())
     }
