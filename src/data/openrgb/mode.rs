@@ -4,8 +4,7 @@ use num_traits::FromPrimitive;
 use crate::{data::{
     Color, ColorMode, Direction,
     ModeFlag::{self, *},
-    TryFromStream, Writable,
-}, OpenRgbResult};
+}, protocol::{TryFromStream, Writable}, OpenRgbResult};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::OpenRgbError::{self, ProtocolError};
 
@@ -60,34 +59,21 @@ pub struct Mode {
 impl TryFromStream for Mode {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        let name = stream.read_value(protocol).await?;
-        let value = stream.read_value(protocol).await?;
-        let flags = stream.read_value(protocol).await?;
-        let speed_min = stream.read_value(protocol).await?;
-        let speed_max = stream.read_value(protocol).await?;
-        let brightness_min = if protocol >= 3 {
-            Some(stream.read_value(protocol).await?)
-        } else {
-            None
-        };
-        let brightness_max = if protocol >= 3 {
-            Some(stream.read_value(protocol).await?)
-        } else {
-            None
-        };
-        let colors_min = stream.read_value(protocol).await?;
-        let colors_max = stream.read_value(protocol).await?;
-        let speed = stream.read_value(protocol).await?;
-        let brightness = if protocol >= 3 {
-            Some(stream.read_value(protocol).await?)
-        } else {
-            None
-        };
-        let direction = stream.read_value(protocol).await?;
-        let color_mode = stream.read_value(protocol).await?;
-        let colors = stream.read_value::<Vec<Color>>(protocol).await?;
+        let name = stream.read_value().await?;
+        let value = stream.read_value().await?;
+        let flags = stream.read_value().await?;
+        let speed_min = stream.read_value().await?;
+        let speed_max = stream.read_value().await?;
+        let brightness_min = Some(stream.read_value().await?);
+        let brightness_max = Some(stream.read_value().await?);
+        let colors_min = stream.read_value().await?;
+        let colors_max = stream.read_value().await?;
+        let speed = stream.read_value().await?;
+        let brightness = Some(stream.read_value().await?);
+        let direction = stream.read_value().await?;
+        let color_mode = stream.read_value().await?;
+        let colors = stream.read_value::<Vec<Color>>().await?;
 
         Ok(Mode {
             name,
@@ -149,72 +135,63 @@ impl TryFromStream for Mode {
 }
 
 impl Writable for Mode {
-    fn size(&self, protocol: u32) -> usize {
+    fn size(&self) -> usize {
         let mut size = 0;
-        size += self.name.size(protocol);
-        size += self.value.size(protocol);
-        size += self.flags.size(protocol);
-        size += self.speed_min.unwrap_or_default().size(protocol);
-        size += self.speed_max.unwrap_or_default().size(protocol);
-        if protocol >= 3 {
-            size += self.brightness_min.unwrap_or_default().size(protocol);
-            size += self.brightness_max.unwrap_or_default().size(protocol);
-        }
-        size += self.colors_min.unwrap_or_default().size(protocol);
-        size += self.colors_max.unwrap_or_default().size(protocol);
-        size += self.speed.unwrap_or_default().size(protocol);
-        if protocol >= 3 {
-            size += self.brightness.unwrap_or_default().size(protocol);
-        }
-        size += self.direction.unwrap_or_default().size(protocol);
-        size += self.color_mode.unwrap_or_default().size(protocol);
-        size += self.colors.size(protocol);
+        size += self.name.size();
+        size += self.value.size();
+        size += self.flags.size();
+        size += self.speed_min.unwrap_or_default().size();
+        size += self.speed_max.unwrap_or_default().size();
+        size += self.brightness_min.unwrap_or_default().size();
+        size += self.brightness_max.unwrap_or_default().size();
+        size += self.colors_min.unwrap_or_default().size();
+        size += self.colors_max.unwrap_or_default().size();
+        size += self.speed.unwrap_or_default().size();
+        size += self.brightness.unwrap_or_default().size();
+        size += self.direction.unwrap_or_default().size();
+        size += self.color_mode.unwrap_or_default().size();
+        size += self.colors.size();
         size
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self.name, protocol).await?;
-        stream.write_value(self.value, protocol).await?;
-        stream.write_value(self.flags, protocol).await?;
+        stream.write_value(self.name).await?;
+        stream.write_value(self.value).await?;
+        stream.write_value(self.flags).await?;
         stream
-            .write_value(self.speed_min.unwrap_or_default(), protocol)
+            .write_value(self.speed_min.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.speed_max.unwrap_or_default(), protocol)
-            .await?;
-        if protocol >= 3 {
-            stream
-                .write_value(self.brightness_min.unwrap_or_default(), protocol)
-                .await?;
-            stream
-                .write_value(self.brightness_max.unwrap_or_default(), protocol)
-                .await?;
-        }
-        stream
-            .write_value(self.colors_min.unwrap_or_default(), protocol)
+            .write_value(self.speed_max.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.colors_max.unwrap_or_default(), protocol)
+            .write_value(self.brightness_min.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.speed.unwrap_or_default(), protocol)
-            .await?;
-        if protocol >= 3 {
-            stream
-                .write_value(self.brightness.unwrap_or_default(), protocol)
-                .await?;
-        }
-        stream
-            .write_value(self.direction.unwrap_or_default(), protocol)
+            .write_value(self.brightness_max.unwrap_or_default())
             .await?;
         stream
-            .write_value(self.color_mode.unwrap_or_default(), protocol)
+            .write_value(self.colors_min.unwrap_or_default())
             .await?;
-        stream.write_value(self.colors, protocol).await?;
+        stream
+            .write_value(self.colors_max.unwrap_or_default())
+            .await?;
+        stream
+            .write_value(self.speed.unwrap_or_default())
+            .await?;
+        stream
+            .write_value(self.brightness.unwrap_or_default())
+            .await?;
+        stream
+            .write_value(self.direction.unwrap_or_default())
+            .await?;
+        stream
+            .write_value(self.color_mode.unwrap_or_default())
+            .await?;
+        stream.write_value(self.colors).await?;
         Ok(())
     }
 }

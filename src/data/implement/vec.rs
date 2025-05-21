@@ -1,30 +1,27 @@
 use std::mem::size_of;
 
-use crate::data::{TryFromStream, Writable};
-use crate::protocol::{ReadableStream, WritableStream};
+use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
 
 impl<T: Writable> Writable for Vec<T> {
-    fn size(&self, protocol: u32) -> usize {
+    fn size(&self) -> usize {
         size_of::<u16>() // vec is preceded by its length
-        + self.iter().map(|e| e.size(protocol)).sum::<usize>()
+        + self.iter().map(|e| e.size()).sum::<usize>()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
         stream
             .write_value(
                 u16::try_from(self.len())
                     .map_err(|e| ProtocolError(format!("Vec is too large to encode: {}", e)))?,
-                protocol,
             )
             .await?;
         for elem in self {
-            stream.write_value(elem, protocol).await?;
+            stream.write_value(elem).await?;
         }
         Ok(())
     }
@@ -33,12 +30,11 @@ impl<T: Writable> Writable for Vec<T> {
 impl<T: TryFromStream> TryFromStream for Vec<T> {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        let len = stream.read_value::<u16>(protocol).await? as usize;
+        let len = stream.read_value::<u16>().await? as usize;
         let mut vec = Vec::with_capacity(len);
         for _ in 0..len {
-            vec.push(stream.read_value(protocol).await?);
+            vec.push(stream.read_value().await?);
         }
         Ok(vec)
     }

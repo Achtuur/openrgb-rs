@@ -1,7 +1,7 @@
 use std::usize;
 
-use crate::data::{Color, DeviceType, Mode, TryFromStream, Zone, LED};
-use crate::protocol::ReadableStream;
+use crate::data::{Color, DeviceType, Mode, Zone, LED};
+use crate::protocol::{ReadableStream, TryFromStream};
 use crate::OpenRgbError;
 
 /// RGB controller.
@@ -58,27 +58,26 @@ pub struct Controller {
 impl TryFromStream for Controller {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        let _data_size = stream.read_value::<u32>(protocol).await?;
-        let device_type = stream.read_value(protocol).await?;
-        let name = stream.read_value(protocol).await?;
-        let vendor = stream.read_value(protocol).await?;
-        let description = stream.read_value(protocol).await?;
-        let version = stream.read_value(protocol).await?;
-        let serial = stream.read_value(protocol).await?;
-        let location = stream.read_value(protocol).await?;
-        let num_modes = stream.read_value::<u16>(protocol).await?;
-        let active_mode = stream.read_value(protocol).await?;
+        let _data_size = stream.read_value::<u32>().await?;
+        let device_type = stream.read_value().await?;
+        let name = stream.read_value().await?;
+        let vendor = stream.read_value().await?;
+        let description = stream.read_value().await?;
+        let version = stream.read_value().await?;
+        let serial = stream.read_value().await?;
+        let location = stream.read_value().await?;
+        let num_modes = stream.read_value::<u16>().await?;
+        let active_mode = stream.read_value().await?;
         let mut modes = Vec::with_capacity(num_modes as usize);
         for _ in 0..num_modes {
-            modes.push(stream.read_value(protocol).await?);
+            modes.push(stream.read_value().await?);
         }
-        let zones = stream.read_value(protocol).await?;
-        let leds = stream.read_value(protocol).await?;
-        let colors = stream.read_value(protocol).await?;
-        let led_alt_names = stream.read_value(protocol).await?;
-        let flags = stream.read_value(protocol).await?;
+        let zones = stream.read_value().await?;
+        let leds = stream.read_value().await?;
+        let colors = stream.read_value().await?;
+        let led_alt_names = stream.read_value().await?;
+        let flags = stream.read_value().await?;
 
         Ok(Controller {
             device_type,

@@ -2,8 +2,7 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
-use crate::data::{TryFromStream, Writable};
-use crate::protocol::{ReadableStream, WritableStream};
+use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
 
@@ -32,25 +31,23 @@ impl Default for ColorMode {
 }
 
 impl Writable for ColorMode {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         size_of::<u32>()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self as u32, protocol).await
+        stream.write_value(self as u32).await
     }
 }
 
 impl TryFromStream for ColorMode {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        stream.read_value(protocol).await.and_then(|id| {
+        stream.read_value().await.and_then(|id| {
             ColorMode::from_u32(id)
                 .ok_or_else(|| ProtocolError(format!("unknown color mode \"{}\"", id)))
         })

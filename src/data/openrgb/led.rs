@@ -1,5 +1,4 @@
-use crate::data::TryFromStream;
-use crate::protocol::ReadableStream;
+use crate::protocol::{ReadableStream, TryFromStream};
 use crate::OpenRgbError;
 
 /// A single LED.
@@ -9,17 +8,20 @@ pub struct LED {
     pub name: String,
 
     /// LED value.
+    ///
+    /// This is some internal flag, basically of no use to us
     pub value: u32,
 }
 
 impl TryFromStream for LED {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
+        let name = stream.read_value().await?;
+        let value = stream.read_value().await?;
         Ok(LED {
-            name: stream.read_value(protocol).await?,
-            value: stream.read_value(protocol).await?,
+            name,
+            value,
         })
     }
 }

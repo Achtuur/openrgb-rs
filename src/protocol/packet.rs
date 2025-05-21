@@ -2,10 +2,11 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
-use crate::data::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::OpenRgbError::{self, ProtocolError};
 use crate::OpenRgbResult;
+
+use super::{TryFromStream, Writable};
 
 /// OpenRGB protocol packet ID.
 ///
@@ -62,25 +63,23 @@ pub enum PacketId {
 }
 
 impl Writable for PacketId {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         size_of::<u32>()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self as u32, protocol).await
+        stream.write_value(self as u32).await
     }
 }
 
 impl TryFromStream for PacketId {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        stream.read_value::<u32>(protocol).await.and_then(|id| {
+        stream.read_value::<u32>().await.and_then(|id| {
             PacketId::from_u32(id)
                 .ok_or_else(|| ProtocolError(format!("unknown packed ID \"{}\"", id)))
         })

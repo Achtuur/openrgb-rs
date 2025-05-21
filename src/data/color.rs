@@ -2,8 +2,7 @@ use std::mem::size_of;
 
 use rgb::RGB8;
 
-use crate::data::{TryFromStream, Writable};
-use crate::protocol::{ReadableStream, WritableStream};
+use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
 /// RGB controller color, aliased to [rgb] crate's [RGB8] type.
@@ -14,30 +13,28 @@ pub type Color = RGB8;
 impl TryFromStream for Color {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        let r = stream.read_value(protocol).await?;
-        let g = stream.read_value(protocol).await?;
-        let b = stream.read_value(protocol).await?;
-        let _padding = stream.read_value::<u8>(protocol).await?;
+        let r = stream.read_value().await?;
+        let g = stream.read_value().await?;
+        let b = stream.read_value().await?;
+        let _padding = stream.read_value::<u8>().await?;
         Ok(Color { r, g, b })
     }
 }
 
 impl Writable for Color {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         4 * size_of::<u8>()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self.r, protocol).await?;
-        stream.write_value(self.g, protocol).await?;
-        stream.write_value(self.b, protocol).await?;
-        stream.write_value(0u8, protocol).await?;
+        stream.write_value(self.r).await?;
+        stream.write_value(self.g).await?;
+        stream.write_value(self.b).await?;
+        stream.write_value(0u8).await?;
         Ok(())
     }
 }

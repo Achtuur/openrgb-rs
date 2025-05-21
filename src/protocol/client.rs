@@ -7,9 +7,11 @@ use log::debug;
 use tokio::net::{TcpStream, ToSocketAddrs};
 use tokio::sync::Mutex;
 
-use crate::data::{Color, Controller, Mode, Writable, RawString};
+use crate::data::{Color, Controller, Mode, RawString};
 use crate::protocol::{OpenRgbStream, PacketId};
 use crate::{OpenRgbError, OpenRgbResult};
+
+use super::Writable;
 
 /// Default protocol version used by [OpenRGB] client.
 pub static DEFAULT_PROTOCOL: u32 = 5;
@@ -17,9 +19,11 @@ pub static DEFAULT_PROTOCOL: u32 = 5;
 /// Default address used by [OpenRGB::connect].
 pub static DEFAULT_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::LOCALHOST, 6742);
 
+pub(crate) const MAGIC: [u8; 4] = *b"ORGB";
+
 /// OpenRGB client.
 pub struct OpenRgbClient<S: OpenRgbStream> {
-    protocol: u32,
+    protocol_id: u32,
     stream: Arc<Mutex<S>>,
 }
 
@@ -83,7 +87,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
     pub async fn new(mut stream: S) -> Result<Self, OpenRgbError> {
         let req_protocol = stream
             .request(
-                DEFAULT_PROTOCOL,
                 0,
                 PacketId::RequestProtocolVersion,
                 DEFAULT_PROTOCOL,
@@ -98,7 +101,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
         );
 
         Ok(Self {
-            protocol,
+            protocol_id: protocol,
             stream: Arc::new(Mutex::new(stream)),
         })
     }
@@ -109,7 +112,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#protocol-versions) for more information.
     pub fn get_protocol_version(&self) -> u32 {
-        self.protocol
+        self.protocol_id
     }
 
     /// Set client name.
@@ -120,7 +123,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 0,
                 PacketId::SetClientName,
                 RawString(name.into()),
@@ -135,7 +137,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
         self.stream
             .lock()
             .await
-            .request(self.protocol, 0, PacketId::RequestControllerCount, ())
+            .request(0, PacketId::RequestControllerCount, ())
             .await
     }
 
@@ -147,10 +149,9 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .request(
-                self.protocol,
                 controller_id,
                 PacketId::RequestControllerData,
-                self.protocol,
+                self.protocol_id,
             )
             .await?;
         c.id = controller_id;
@@ -165,7 +166,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 0,
                 PacketId::RGBControllerResizeZone,
                 (zone_id, new_size),
@@ -186,7 +186,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 controller_id,
                 PacketId::RGBControllerUpdateSingleLed,
                 (led_id, color),
@@ -196,20 +195,25 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
 
     /// Update LEDs.
     ///
+    /// Structure:
+    /// - `u32` - data size
+    /// - `u16` - color counts
+    /// - `[u32]` - colors
+    ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_updateleds) for more information.
     pub async fn update_leds(
         &self,
         controller_id: u32,
         colors: Vec<Color>,
     ) -> OpenRgbResult<()> {
+        let size = colors.size()+ size_of::<u32>(); // count the data_size field too
         self.stream
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 controller_id,
                 PacketId::RGBControllerUpdateLeds,
-                (colors.size(self.protocol), colors),
+                (size, colors),
             )
             .await
     }
@@ -227,11 +231,10 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 controller_id,
                 PacketId::RGBControllerUpdateZoneLeds,
                 (
-                    zone_id.size(self.protocol) + colors.size(self.protocol),
+                    zone_id.size() + colors.size(),
                     zone_id,
                     colors,
                 ),
@@ -247,7 +250,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
         self.stream
             .lock()
             .await
-            .request::<_, (u32, Vec<String>)>(self.protocol, 0, PacketId::RequestProfileList, ())
+            .request::<_, (u32, Vec<String>)>( 0, PacketId::RequestProfileList, ())
             .await
             .map(|(_size, profiles)| profiles)
     }
@@ -261,7 +264,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 0,
                 PacketId::RequestLoadProfile,
                 RawString(name.into()),
@@ -277,7 +279,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
         self.stream
             .lock()
             .await
-            .write_packet(self.protocol, 0, PacketId::RequestSaveProfile, name.into())
+            .write_packet( 0, PacketId::RequestSaveProfile, name.into())
             .await
     }
 
@@ -290,7 +292,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 0,
                 PacketId::RequestDeleteProfile,
                 name.into(),
@@ -306,7 +307,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 controller_id,
                 PacketId::RGBControllerSetCustomMode,
                 (),
@@ -327,11 +327,10 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 controller_id,
                 PacketId::RGBControllerUpdateMode,
                 (
-                    mode_id.size(self.protocol) + mode.size(self.protocol),
+                    mode_id.size() + mode.size(),
                     mode_id,
                     mode,
                 ),
@@ -348,7 +347,6 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
             .lock()
             .await
             .write_packet(
-                self.protocol,
                 controller_id,
                 PacketId::RGBControllerSaveMode,
                 mode,
@@ -357,10 +355,10 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
     }
 
     fn check_protocol_version_profile_control(&self) -> OpenRgbResult<()> {
-        if self.protocol < 2 {
+        if self.protocol_id < 2 {
             return Err(OpenRgbError::UnsupportedOperation {
                 operation: "Profile control".to_owned(),
-                current_protocol_version: self.protocol,
+                current_protocol_version: self.protocol_id,
                 min_protocol_version: 2,
             });
         }
@@ -368,10 +366,10 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
     }
 
     fn check_protocol_version_saving_modes(&self) -> OpenRgbResult<()> {
-        if self.protocol < 3 {
+        if self.protocol_id < 3 {
             return Err(OpenRgbError::UnsupportedOperation {
                 operation: "Saving modes".to_owned(),
-                current_protocol_version: self.protocol,
+                current_protocol_version: self.protocol_id,
                 min_protocol_version: 3,
             });
         }

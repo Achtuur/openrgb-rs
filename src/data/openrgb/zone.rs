@@ -1,7 +1,7 @@
 use array2d::Array2D;
 
-use crate::data::{TryFromStream, ZoneType};
-use crate::protocol::ReadableStream;
+use crate::data::{ZoneType};
+use crate::protocol::{ReadableStream, TryFromStream};
 use crate::OpenRgbError;
 
 use super::Segment;
@@ -42,30 +42,29 @@ pub struct Zone {
 impl TryFromStream for Zone {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        let name = stream.read_value(protocol).await?;
-        let zone_type = stream.read_value(protocol).await?;
-        let leds_min = stream.read_value(protocol).await?;
-        let leds_max = stream.read_value(protocol).await?;
-        let leds_count = stream.read_value(protocol).await?;
-        let matrix_len = stream.read_value::<u16>(protocol).await? as usize;
+        let name = stream.read_value().await?;
+        let zone_type = stream.read_value().await?;
+        let leds_min = stream.read_value().await?;
+        let leds_max = stream.read_value().await?;
+        let leds_count = stream.read_value().await?;
+        let matrix_len = stream.read_value::<u16>().await? as usize;
         let matrix = match matrix_len {
             0 => None,
             _ => Some({
-                let matrix_height = stream.read_value::<u32>(protocol).await? as usize;
-                let matrix_width = stream.read_value::<u32>(protocol).await? as usize;
+                let matrix_height = stream.read_value::<u32>().await? as usize;
+                let matrix_width = stream.read_value::<u32>().await? as usize;
                 let matrix_size = matrix_height * matrix_width;
                 let mut matrix_data = Vec::with_capacity(matrix_size);
                 for _ in 0..matrix_size {
-                    matrix_data.push(stream.read_value(protocol).await?);
+                    matrix_data.push(stream.read_value().await?);
                 }
                 Array2D::from_row_major(&matrix_data, matrix_height, matrix_width)
             }),
         };
 
-        let segments = stream.read_value(protocol).await?;
-        let flags = stream.read_value(protocol).await?;
+        let segments = stream.read_value().await?;
+        let flags = stream.read_value().await?;
 
         Ok(Zone {
             name,

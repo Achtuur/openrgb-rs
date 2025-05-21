@@ -1,8 +1,9 @@
+//! Wrapper around the OpenRGB client to make it friendlier to use.
 use std::{collections::HashMap, sync::Arc};
 
 use tokio::{net::{TcpStream, ToSocketAddrs}, sync::Mutex};
 
-use crate::{data::{Controller, DeviceType}, error::OpenRgbResult, protocol::OpenRgbStream, OpenRgbClient, OpenRgbError, DEFAULT_ADDR};
+use crate::{data::{Controller, DeviceType}, error::OpenRgbResult, protocol::{OpenRgbClient, OpenRgbStream, DEFAULT_ADDR}, OpenRgbError};
 
 pub struct OpenRgbClientWrapper<S: OpenRgbStream> {
     // todo: make this not public

@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
-use crate::data::{TryFromStream, Writable};
+use crate::protocol::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
@@ -15,10 +15,10 @@ pub enum DeviceType {
     Motherboard = 0,
 
     /// DRAM.
-    DRAM = 1,
+    DRam = 1,
 
     /// GPU.
-    GPU = 2,
+    Gpu = 2,
 
     /// Cooler.
     Cooler = 3,
@@ -58,25 +58,26 @@ pub enum DeviceType {
 }
 
 impl Writable for DeviceType {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         size_of::<u32>()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self as u32, protocol).await
+        stream.write_value(self as u32).await
     }
 }
 
 impl TryFromStream for DeviceType {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        Ok(DeviceType::from_u32(stream.read_value(protocol).await?).unwrap_or(DeviceType::Unknown))
+        let device_type_raw = stream.read_value().await?;
+        let device_type = DeviceType::from_u32(device_type_raw)
+        .unwrap_or(DeviceType::Unknown);
+        Ok(device_type)
     }
 }
 

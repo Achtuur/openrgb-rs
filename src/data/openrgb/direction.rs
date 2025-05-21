@@ -2,10 +2,9 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
-use crate::data::{TryFromStream, Writable};
+use crate::protocol::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
-use crate::OpenRgbError::ProtocolError;
 
 /// Direction for [Mode](crate::data::Mode).
 #[derive(Primitive, Eq, PartialEq, Debug, Copy, Clone)]
@@ -36,27 +35,25 @@ impl Default for Direction {
 }
 
 impl Writable for Direction {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         size_of::<u32>()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self as u32, protocol).await
+        stream.write_value(self as u32).await
     }
 }
 
 impl TryFromStream for Direction {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        stream.read_value(protocol).await.and_then(|id| {
+        stream.read_value().await.and_then(|id| {
             Direction::from_u32(id)
-                .ok_or_else(|| ProtocolError(format!("unknown direction \"{}\"", id)))
+                .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown direction \"{}\"", id)))
         })
     }
 }

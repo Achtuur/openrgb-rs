@@ -33,7 +33,7 @@ pub fn setup() -> Result<(), Box<dyn Error>> {
 pub trait OpenRGBMockBuilder<S: OpenRgbStream> {
     async fn to_client(&mut self) -> Result<OpenRgbClient<S>, OpenRgbError>;
     fn negotiate_default_protocol(&mut self) -> &mut Self;
-    fn negotiate_protocol(&mut self, protocol: u32) -> &mut Self;
+    fn negotiate_protocol(&mut self) -> &mut Self;
 }
 
 impl OpenRGBMockBuilder<Mock> for Builder {
@@ -45,7 +45,7 @@ impl OpenRGBMockBuilder<Mock> for Builder {
         self.negotiate_protocol(DEFAULT_PROTOCOL)
     }
 
-    fn negotiate_protocol(&mut self, protocol: u32) -> &mut Self {
+    fn negotiate_protocol(&mut self) -> &mut Self {
         self
             // request protocol version request
             .write(b"ORGB") // magic

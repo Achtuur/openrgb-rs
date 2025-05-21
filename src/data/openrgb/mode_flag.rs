@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use flagset::{flags, FlagSet};
 
-use crate::data::{TryFromStream, Writable};
+use crate::protocol::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
@@ -48,25 +48,23 @@ flags! {
 }
 
 impl Writable for FlagSet<ModeFlag> {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         size_of::<u32>()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self.bits(), protocol).await
+        stream.write_value(self.bits()).await
     }
 }
 
 impl TryFromStream for FlagSet<ModeFlag> {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
-        let value = stream.read_value(protocol).await?;
+        let value = stream.read_value().await?;
         FlagSet::<ModeFlag>::new(value).map_err(|e| {
             ProtocolError(format!("Received invalid mode flag set: {} ({})", value, e))
         })

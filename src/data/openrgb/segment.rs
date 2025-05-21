@@ -1,4 +1,4 @@
-use crate::{data::TryFromStream, protocol::ReadableStream, OpenRgbResult};
+use crate::{protocol::{ReadableStream, TryFromStream}, OpenRgbResult};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Segment {
@@ -11,12 +11,11 @@ pub struct Segment {
 impl TryFromStream for Segment {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> OpenRgbResult<Self> {
-        let name = stream.read_value(protocol).await?;
-        let seg_type = stream.read_value(protocol).await?;
-        let start_idx = stream.read_value(protocol).await?;
-        let led_count = stream.read_value(protocol).await?;
+        let name = stream.read_value().await?;
+        let seg_type = stream.read_value().await?;
+        let start_idx = stream.read_value().await?;
+        let led_count = stream.read_value().await?;
 
         Ok(Self {
             name,

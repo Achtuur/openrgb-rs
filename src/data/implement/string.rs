@@ -1,14 +1,13 @@
 use std::mem::size_of;
 
-use crate::data::{TryFromStream, Writable};
-use crate::protocol::{ReadableStream, WritableStream};
+use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 use crate::OpenRgbError::ProtocolError;
 
 // FIXME buggy for non ASCII strings
 
 impl Writable for String {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         size_of::<u16>() // string is preceded by its length
         + self.len()
         + 1 // null terminator
@@ -17,21 +16,19 @@ impl Writable for String {
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
         stream
-            .write_value((self.len() + 1) as u16, protocol)
+            .write_value((self.len() + 1) as u16)
             .await?;
-        stream.write_value(RawString(self), protocol).await
+        stream.write_value(RawString(self)).await
     }
 }
 
 impl TryFromStream for String {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> OpenRgbResult<Self> {
-        let mut buf = vec![Default::default(); stream.read_value::<u16>(protocol).await? as usize];
+        let mut buf = vec![Default::default(); stream.read_value::<u16>().await? as usize];
         stream.read_exact(&mut buf).await?;
         buf.pop();
         String::from_utf8(buf)
@@ -43,14 +40,13 @@ impl TryFromStream for String {
 pub struct RawString(pub String);
 
 impl Writable for RawString {
-    fn size(&self, _protocol: u32) -> usize {
+    fn size(&self) -> usize {
         self.0.len() + 1
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        _protocol: u32,
     ) -> OpenRgbResult<()> {
         stream
             .write_all(format!("{}\0", self.0).as_bytes())

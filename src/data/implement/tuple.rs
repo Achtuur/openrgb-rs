@@ -1,19 +1,17 @@
-use crate::data::{TryFromStream, Writable};
-use crate::protocol::{ReadableStream, WritableStream};
+use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
 impl<A: Writable, B: Writable> Writable for (A, B) {
-    fn size(&self, protocol: u32) -> usize {
-        self.0.size(protocol) + self.1.size(protocol)
+    fn size(&self) -> usize {
+        self.0.size() + self.1.size()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self.0, protocol).await?;
-        stream.write_value(self.1, protocol).await?;
+        stream.write_value(self.0).await?;
+        stream.write_value(self.1).await?;
         Ok(())
     }
 }
@@ -21,28 +19,26 @@ impl<A: Writable, B: Writable> Writable for (A, B) {
 impl<A: TryFromStream, B: TryFromStream> TryFromStream for (A, B) {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
         Ok((
-            stream.read_value::<A>(protocol).await?,
-            stream.read_value::<B>(protocol).await?,
+            stream.read_value::<A>().await?,
+            stream.read_value::<B>().await?,
         ))
     }
 }
 
 impl<A: Writable, B: Writable, C: Writable> Writable for (A, B, C) {
-    fn size(&self, protocol: u32) -> usize {
-        self.0.size(protocol) + self.1.size(protocol) + self.2.size(protocol)
+    fn size(&self) -> usize {
+        self.0.size() + self.1.size() + self.2.size()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self.0, protocol).await?;
-        stream.write_value(self.1, protocol).await?;
-        stream.write_value(self.2, protocol).await?;
+        stream.write_value(self.0).await?;
+        stream.write_value(self.1).await?;
+        stream.write_value(self.2).await?;
         Ok(())
     }
 }
@@ -50,12 +46,11 @@ impl<A: Writable, B: Writable, C: Writable> Writable for (A, B, C) {
 impl<A: TryFromStream, B: TryFromStream, C: TryFromStream> TryFromStream for (A, B, C) {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
         Ok((
-            stream.read_value::<A>(protocol).await?,
-            stream.read_value::<B>(protocol).await?,
-            stream.read_value::<C>(protocol).await?,
+            stream.read_value::<A>().await?,
+            stream.read_value::<B>().await?,
+            stream.read_value::<C>().await?,
         ))
     }
 }
@@ -63,22 +58,21 @@ impl<A: TryFromStream, B: TryFromStream, C: TryFromStream> TryFromStream for (A,
 impl<A: Writable, B: Writable, C: Writable, D: Writable> Writable
     for (A, B, C, D)
 {
-    fn size(&self, protocol: u32) -> usize {
-        self.0.size(protocol)
-            + self.1.size(protocol)
-            + self.2.size(protocol)
-            + self.3.size(protocol)
+    fn size(&self) -> usize {
+        self.0.size()
+            + self.1.size()
+            + self.2.size()
+            + self.3.size()
     }
 
     async fn try_write(
         self,
         stream: &mut impl WritableStream,
-        protocol: u32,
     ) -> OpenRgbResult<()> {
-        stream.write_value(self.0, protocol).await?;
-        stream.write_value(self.1, protocol).await?;
-        stream.write_value(self.2, protocol).await?;
-        stream.write_value(self.3, protocol).await?;
+        stream.write_value(self.0).await?;
+        stream.write_value(self.1).await?;
+        stream.write_value(self.2).await?;
+        stream.write_value(self.3).await?;
         Ok(())
     }
 }
@@ -88,13 +82,12 @@ impl<A: TryFromStream, B: TryFromStream, C: TryFromStream, D: TryFromStream> Try
 {
     async fn try_read(
         stream: &mut impl ReadableStream,
-        protocol: u32,
     ) -> Result<Self, OpenRgbError> {
         Ok((
-            stream.read_value::<A>(protocol).await?,
-            stream.read_value::<B>(protocol).await?,
-            stream.read_value::<C>(protocol).await?,
-            stream.read_value::<D>(protocol).await?,
+            stream.read_value::<A>().await?,
+            stream.read_value::<B>().await?,
+            stream.read_value::<C>().await?,
+            stream.read_value::<D>().await?,
         ))
     }
 }
