@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
-use crate::OpenRgbError::ProtocolError;
+
 
 /// RGB controller color mode.
 ///
@@ -46,11 +46,10 @@ impl Writable for ColorMode {
 impl TryFromStream for ColorMode {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
-        stream.read_value().await.and_then(|id| {
-            ColorMode::from_u32(id)
-                .ok_or_else(|| ProtocolError(format!("unknown color mode \"{}\"", id)))
-        })
+    ) -> OpenRgbResult<Self> {
+        let raw = stream.read_value().await?;
+        ColorMode::from_u32(raw)
+        .ok_or(OpenRgbError::ProtocolError(format!("unknown color mode \"{}\"", raw)))
     }
 }
 

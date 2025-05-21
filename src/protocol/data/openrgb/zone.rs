@@ -1,8 +1,8 @@
 use array2d::Array2D;
 
-use crate::data::{ZoneType};
+use crate::protocol::data::{ZoneType};
 use crate::protocol::{ReadableStream, TryFromStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 use super::Segment;
 
@@ -42,7 +42,7 @@ pub struct Zone {
 impl TryFromStream for Zone {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let zone_type = stream.read_value().await?;
         let leds_min = stream.read_value().await?;

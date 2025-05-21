@@ -7,11 +7,11 @@ use log::debug;
 use tokio::net::{TcpStream, ToSocketAddrs};
 use tokio::sync::Mutex;
 
-use crate::data::{Color, Controller, Mode, RawString};
+use super::data::{Color, Controller, Mode, RawString};
 use crate::protocol::{OpenRgbStream, PacketId};
 use crate::{OpenRgbError, OpenRgbResult};
 
-use super::Writable;
+use super::{ReadableStream, Writable, WritableStream};
 
 /// Default protocol version used by [OpenRGB] client.
 pub static DEFAULT_PROTOCOL: u32 = 5;
@@ -22,12 +22,12 @@ pub static DEFAULT_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::LOCALHOST, 6742);
 pub(crate) const MAGIC: [u8; 4] = *b"ORGB";
 
 /// OpenRGB client.
-pub struct OpenRgbClient<S: OpenRgbStream> {
+pub struct OpenRgbProtocol<S: OpenRgbStream> {
     protocol_id: u32,
     stream: Arc<Mutex<S>>,
 }
 
-impl OpenRgbClient<TcpStream> {
+impl OpenRgbProtocol<TcpStream> {
     /// Connect to default OpenRGB server.
     ///
     /// Use [OpenRGB::connect_to] to connect to a specific server.
@@ -45,7 +45,7 @@ impl OpenRgbClient<TcpStream> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn connect() -> Result<Self, OpenRgbError> {
+    pub async fn connect() -> OpenRgbResult<Self> {
         Self::connect_to(DEFAULT_ADDR).await
     }
 
@@ -68,7 +68,7 @@ impl OpenRgbClient<TcpStream> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn connect_to(addr: impl ToSocketAddrs + Debug + Copy) -> Result<Self, OpenRgbError> {
+    pub async fn connect_to(addr: impl ToSocketAddrs + Debug + Copy) -> OpenRgbResult<Self> {
         debug!("Connecting to OpenRGB server at {:?}...", addr);
         Self::new(TcpStream::connect(addr).await.map_err(|source| {
             OpenRgbError::ConnectionError {
@@ -80,11 +80,11 @@ impl OpenRgbClient<TcpStream> {
     }
 }
 
-impl<S: OpenRgbStream> OpenRgbClient<S> {
+impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     /// Build a new client from given stream.
     ///
     /// This constructor expects a connected, ready to use stream.
-    pub async fn new(mut stream: S) -> Result<Self, OpenRgbError> {
+    pub async fn new(mut stream: S) -> OpenRgbResult<Self> {
         let req_protocol = stream
             .request(
                 0,
@@ -133,7 +133,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
     /// Get number of controllers.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_controller_count) for more information.
-    pub async fn get_controller_count(&self) -> Result<u32, OpenRgbError> {
+    pub async fn get_controller_count(&self) -> OpenRgbResult<u32> {
         self.stream
             .lock()
             .await
@@ -144,7 +144,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
     /// Get controller data. This also caches the obtained controller.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_controller_data) for more information.
-    pub async fn get_controller(&mut self, controller_id: u32) -> Result<Controller, OpenRgbError> {
+    pub async fn get_controller(&mut self, controller_id: u32) -> OpenRgbResult<Controller> {
         let mut c: Controller = self.stream
             .lock()
             .await
@@ -245,7 +245,7 @@ impl<S: OpenRgbStream> OpenRgbClient<S> {
     /// Get profiles.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_profile_list) for more information.
-    pub async fn get_profiles(&self) -> Result<Vec<String>, OpenRgbError> {
+    pub async fn get_profiles(&self) -> OpenRgbResult<Vec<String>> {
         self.check_protocol_version_profile_control()?;
         self.stream
             .lock()

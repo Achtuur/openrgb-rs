@@ -1,5 +1,5 @@
 use crate::protocol::{ReadableStream, TryFromStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 /// A single LED.
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -16,7 +16,7 @@ pub struct LED {
 impl TryFromStream for LED {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let value = stream.read_value().await?;
         Ok(LED {

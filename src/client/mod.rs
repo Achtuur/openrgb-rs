@@ -3,11 +3,11 @@ use std::{collections::HashMap, sync::Arc};
 
 use tokio::{net::{TcpStream, ToSocketAddrs}, sync::Mutex};
 
-use crate::{data::{Controller, DeviceType}, error::OpenRgbResult, protocol::{OpenRgbClient, OpenRgbStream, DEFAULT_ADDR}, OpenRgbError};
+use crate::{protocol::data::{Controller, DeviceType}, error::OpenRgbResult, protocol::{OpenRgbProtocol, OpenRgbStream, DEFAULT_ADDR}, OpenRgbError};
 
 pub struct OpenRgbClientWrapper<S: OpenRgbStream> {
     // todo: make this not public
-    pub client: OpenRgbClient<S>,
+    pub client: OpenRgbProtocol<S>,
     controller_cache: HashMap<u32, Controller>,
 }
 
@@ -30,7 +30,7 @@ impl OpenRgbClientWrapper<TcpStream> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn connect() -> Result<Self, OpenRgbError> {
+    pub async fn connect() -> OpenRgbResult<Self> {
         Self::connect_to(DEFAULT_ADDR).await
     }
 
@@ -53,8 +53,8 @@ impl OpenRgbClientWrapper<TcpStream> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn connect_to(addr: impl ToSocketAddrs + std::fmt::Debug + Copy) -> Result<Self, OpenRgbError> {
-        let client = OpenRgbClient::connect_to(addr).await?;
+    pub async fn connect_to(addr: impl ToSocketAddrs + std::fmt::Debug + Copy) -> OpenRgbResult<Self> {
+        let client = OpenRgbProtocol::connect_to(addr).await?;
         Ok(Self {
             client,
             controller_cache: HashMap::new(),

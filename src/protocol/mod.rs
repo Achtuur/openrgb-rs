@@ -9,6 +9,9 @@ pub use {
     client::*,
 };
 
+pub(crate) mod data;
+
+
 
 /// Things that can read from stream to construct itself
 /// TryFromStream is actually what it is

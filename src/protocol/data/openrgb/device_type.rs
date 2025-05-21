@@ -73,7 +73,7 @@ impl Writable for DeviceType {
 impl TryFromStream for DeviceType {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let device_type_raw = stream.read_value().await?;
         let device_type = DeviceType::from_u32(device_type_raw)
         .unwrap_or(DeviceType::Unknown);

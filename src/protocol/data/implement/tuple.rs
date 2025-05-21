@@ -19,7 +19,7 @@ impl<A: Writable, B: Writable> Writable for (A, B) {
 impl<A: TryFromStream, B: TryFromStream> TryFromStream for (A, B) {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         Ok((
             stream.read_value::<A>().await?,
             stream.read_value::<B>().await?,
@@ -46,7 +46,7 @@ impl<A: Writable, B: Writable, C: Writable> Writable for (A, B, C) {
 impl<A: TryFromStream, B: TryFromStream, C: TryFromStream> TryFromStream for (A, B, C) {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         Ok((
             stream.read_value::<A>().await?,
             stream.read_value::<B>().await?,
@@ -82,7 +82,7 @@ impl<A: TryFromStream, B: TryFromStream, C: TryFromStream, D: TryFromStream> Try
 {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         Ok((
             stream.read_value::<A>().await?,
             stream.read_value::<B>().await?,

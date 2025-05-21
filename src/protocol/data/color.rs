@@ -13,7 +13,7 @@ pub type Color = RGB8;
 impl TryFromStream for Color {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let r = stream.read_value().await?;
         let g = stream.read_value().await?;
         let b = stream.read_value().await?;

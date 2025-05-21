@@ -33,7 +33,6 @@ pub use {
     client::*,
 };
 
-pub mod data;
 mod client;
 mod error;
 mod protocol;

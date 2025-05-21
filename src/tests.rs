@@ -31,13 +31,13 @@ pub fn setup() -> Result<(), Box<dyn Error>> {
 }
 
 pub trait OpenRGBMockBuilder<S: OpenRgbStream> {
-    async fn to_client(&mut self) -> Result<OpenRgbClient<S>, OpenRgbError>;
+    async fn to_client(&mut self) -> OpenRgbResult<OpenRgbClient<S>>;
     fn negotiate_default_protocol(&mut self) -> &mut Self;
     fn negotiate_protocol(&mut self) -> &mut Self;
 }
 
 impl OpenRGBMockBuilder<Mock> for Builder {
-    async fn to_client(&mut self) -> Result<OpenRgbClient<Mock>, OpenRgbError> {
+    async fn to_client(&mut self) -> OpenRgbResult<OpenRgbClient<Mock>> {
         OpenRgbClient::new(self.build()).await
     }
 

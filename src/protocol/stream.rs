@@ -9,7 +9,7 @@ use super::{PacketId, TryFromStream, Writable};
 
 
 pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
-    async fn read_value<T: TryFromStream>(&mut self) -> Result<T, OpenRgbError> {
+    async fn read_value<T: TryFromStream>(&mut self) -> OpenRgbResult<T> {
         T::try_read(self).await
     }
 
@@ -17,7 +17,7 @@ pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
         &mut self,
         expected_device_id: u32,
         expected_packet_id: PacketId,
-    ) -> Result<usize, OpenRgbError> {
+    ) -> OpenRgbResult<usize> {
         debug!("Reading {:?} packet...", expected_packet_id);
 
         for c in MAGIC {
@@ -55,7 +55,7 @@ pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
         &mut self,
         expected_device_id: u32,
         expected_packet_id: PacketId,
-    ) -> Result<O, OpenRgbError> {
+    ) -> OpenRgbResult<O> {
         self.read_header(expected_device_id, expected_packet_id)
             .await?;
         // TODO check header length vs actual read length
@@ -124,7 +124,7 @@ pub trait OpenRgbStream: ReadableStream + WritableStream {
         device_id: u32,
         packet_id: PacketId,
         data: I,
-    ) -> Result<O, OpenRgbError> {
+    ) -> OpenRgbResult<O> {
         self.write_packet(device_id, packet_id, data)
             .await?;
         self.read_packet(device_id, packet_id).await

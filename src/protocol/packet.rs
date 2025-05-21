@@ -78,7 +78,7 @@ impl Writable for PacketId {
 impl TryFromStream for PacketId {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         stream.read_value::<u32>().await.and_then(|id| {
             PacketId::from_u32(id)
                 .ok_or_else(|| ProtocolError(format!("unknown packed ID \"{}\"", id)))

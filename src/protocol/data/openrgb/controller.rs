@@ -1,8 +1,8 @@
 use std::usize;
 
-use crate::data::{Color, DeviceType, Mode, Zone, LED};
+use crate::protocol::data::{Color, DeviceType, Mode, Zone, LED};
 use crate::protocol::{ReadableStream, TryFromStream};
-use crate::OpenRgbError;
+use crate::{OpenRgbError, OpenRgbResult};
 
 /// RGB controller.
 ///
@@ -58,7 +58,7 @@ pub struct Controller {
 impl TryFromStream for Controller {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let _data_size = stream.read_value::<u32>().await?;
         let device_type = stream.read_value().await?;
         let name = stream.read_value().await?;

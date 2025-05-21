@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
-use crate::OpenRgbError::ProtocolError;
+
 
 // FIXME buggy for non ASCII strings
 
@@ -32,7 +32,7 @@ impl TryFromStream for String {
         stream.read_exact(&mut buf).await?;
         buf.pop();
         String::from_utf8(buf)
-            .map_err(|e| ProtocolError(format!("Failed decoding string as UTF-8: {}", e)))
+            .map_err(|e| OpenRgbError::ProtocolError(format!("Failed decoding string as UTF-8: {}", e)))
     }
 }
 

@@ -50,7 +50,7 @@ impl Writable for Direction {
 impl TryFromStream for Direction {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         stream.read_value().await.and_then(|id| {
             Direction::from_u32(id)
                 .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown direction \"{}\"", id)))

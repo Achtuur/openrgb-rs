@@ -5,7 +5,7 @@ use flagset::{flags, FlagSet};
 use crate::protocol::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
-use crate::OpenRgbError::ProtocolError;
+
 
 flags! {
     /// RGB controller mode flags.
@@ -63,10 +63,10 @@ impl Writable for FlagSet<ModeFlag> {
 impl TryFromStream for FlagSet<ModeFlag> {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let value = stream.read_value().await?;
         FlagSet::<ModeFlag>::new(value).map_err(|e| {
-            ProtocolError(format!("Received invalid mode flag set: {} ({})", value, e))
+            OpenRgbError::ProtocolError(format!("Received invalid mode flag set: {} ({})", value, e))
         })
     }
 }

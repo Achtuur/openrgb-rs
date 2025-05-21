@@ -1,7 +1,7 @@
 use flagset::FlagSet;
 use num_traits::FromPrimitive;
 
-use crate::{data::{
+use crate::{protocol::data::{
     Color, ColorMode, Direction,
     ModeFlag::{self, *},
 }, protocol::{TryFromStream, Writable}, OpenRgbResult};
@@ -59,7 +59,7 @@ pub struct Mode {
 impl TryFromStream for Mode {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let value = stream.read_value().await?;
         let flags = stream.read_value().await?;

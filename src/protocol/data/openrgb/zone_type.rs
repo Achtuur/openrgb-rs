@@ -5,7 +5,7 @@ use num_traits::FromPrimitive;
 use crate::protocol::{TryFromStream, Writable};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
-use crate::OpenRgbError::ProtocolError;
+
 
 /// RGB controller [Zone](crate::data::Zone) type.
 ///
@@ -38,10 +38,10 @@ impl Writable for ZoneType {
 impl TryFromStream for ZoneType {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         stream.read_value().await.and_then(|id| {
             ZoneType::from_u32(id)
-                .ok_or_else(|| ProtocolError(format!("unknown zone type \"{}\"", id)))
+                .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown zone type \"{}\"", id)))
         })
     }
 }

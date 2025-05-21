@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
-use crate::OpenRgbError::ProtocolError;
+
 
 impl<T: Writable> Writable for Vec<T> {
     fn size(&self) -> usize {
@@ -17,7 +17,7 @@ impl<T: Writable> Writable for Vec<T> {
         stream
             .write_value(
                 u16::try_from(self.len())
-                    .map_err(|e| ProtocolError(format!("Vec is too large to encode: {}", e)))?,
+                    .map_err(|e| OpenRgbError::ProtocolError(format!("Vec is too large to encode: {}", e)))?,
             )
             .await?;
         for elem in self {
@@ -30,7 +30,7 @@ impl<T: Writable> Writable for Vec<T> {
 impl<T: TryFromStream> TryFromStream for Vec<T> {
     async fn try_read(
         stream: &mut impl ReadableStream,
-    ) -> Result<Self, OpenRgbError> {
+    ) -> OpenRgbResult<Self> {
         let len = stream.read_value::<u16>().await? as usize;
         let mut vec = Vec::with_capacity(len);
         for _ in 0..len {
