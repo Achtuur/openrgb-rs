@@ -10,10 +10,10 @@ use super::data::{Color, ControllerData, ModeData, RawString, SegmentData};
 use crate::protocol::{OpenRgbStream, PacketId};
 use crate::{OpenRgbError, OpenRgbResult};
 
-use super::{Writable, WritableStream};
+use super::{ProtocolTcpStream, Writable, WritableStream};
 
 /// Default protocol version used by [OpenRGB] client.
-pub static DEFAULT_PROTOCOL: u32 = 5;
+pub static DEFAULT_PROTOCOL: u32 = 4;
 
 /// Default address used by [OpenRGB::connect].
 pub static DEFAULT_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::LOCALHOST, 6742);
@@ -21,6 +21,8 @@ pub static DEFAULT_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::LOCALHOST, 6742);
 pub(crate) const MAGIC: [u8; 4] = *b"ORGB";
 
 /// OpenRGB client.
+///
+/// This struct makes sure the protocol_id and the stream are in sync.
 pub struct OpenRgbProtocol<S: OpenRgbStream> {
     protocol_id: u32,
     stream: Arc<Mutex<S>>,
@@ -28,13 +30,11 @@ pub struct OpenRgbProtocol<S: OpenRgbStream> {
 
 impl<S: OpenRgbStream> Clone for OpenRgbProtocol<S> {
     fn clone(&self) -> Self {
-        Self { protocol_id: self.protocol_id.clone(), stream: self.stream.clone() }
+        Self { protocol_id: self.protocol_id, stream: self.stream.clone() }
     }
 }
 
-unsafe impl Send for OpenRgbProtocol<TcpStream> {}
-
-impl OpenRgbProtocol<TcpStream> {
+impl OpenRgbProtocol<ProtocolTcpStream> {
     /// Connect to default OpenRGB server.
     ///
     /// Use [OpenRGB::connect_to] to connect to a specific server.
@@ -77,7 +77,7 @@ impl OpenRgbProtocol<TcpStream> {
     /// ```
     pub async fn connect_to(addr: impl ToSocketAddrs + Debug + Copy) -> OpenRgbResult<Self> {
         debug!("Connecting to OpenRGB server at {:?}...", addr);
-        let stream = TcpStream::connect(addr).await.map_err(|source| {
+        let stream = ProtocolTcpStream::connect(addr).await.map_err(|source| {
             OpenRgbError::ConnectionError {
                 addr: format!("{:?}", addr),
                 source,
@@ -107,6 +107,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
             "Connected to OpenRGB server using protocol version {:?}",
             protocol
         );
+        stream.set_protocol_version(protocol);
 
         Ok(Self {
             protocol_id: protocol,
@@ -239,6 +240,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     }
 
     pub async fn add_segment(&self, controller_id: u32, zone_id: u32, segment: &SegmentData) -> OpenRgbResult<()> {
+        self.check_protocol_version(5, "Add Segment")?;
         let data_size = size_of::<u32>() + zone_id.size() + segment.size();
         self.stream
             .lock()
@@ -255,7 +257,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_profile_list) for more information.
     pub async fn get_profiles(&self) -> OpenRgbResult<Vec<String>> {
-        self.check_protocol_version_profile_control()?;
+        self.check_protocol_version(2, "Get profiles")?;
         self.stream
             .lock()
             .await
@@ -268,7 +270,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_load_profile) for more information.
     pub async fn load_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
-        self.check_protocol_version_profile_control()?;
+        self.check_protocol_version(2, "Load profiles")?;
         self.stream
             .lock()
             .await
@@ -280,7 +282,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_save_profile) for more information.
     pub async fn save_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
-        self.check_protocol_version_profile_control()?;
+        self.check_protocol_version(2, "Save profiles")?;
         self.stream
             .lock()
             .await
@@ -292,7 +294,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_delete_profile) for more information.
     pub async fn delete_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
-        self.check_protocol_version_profile_control()?;
+        self.check_protocol_version(2, "Delete profiles")?;
         self.stream
             .lock()
             .await
@@ -336,7 +338,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_savemode) for more information.
     pub async fn save_mode(&self, controller_id: u32, mode: ModeData) -> OpenRgbResult<()> {
-        self.check_protocol_version_saving_modes()?;
+        self.check_protocol_version(3, "Save mode")?;
         self.stream
             .lock()
             .await
@@ -344,23 +346,12 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
             .await
     }
 
-    fn check_protocol_version_profile_control(&self) -> OpenRgbResult<()> {
-        if self.protocol_id < 2 {
+    fn check_protocol_version(&self, min: u32, msg: &str) -> OpenRgbResult<()> {
+        if self.protocol_id < min {
             return Err(OpenRgbError::UnsupportedOperation {
-                operation: "Profile control".to_owned(),
+                operation: msg.to_owned(),
                 current_protocol_version: self.protocol_id,
-                min_protocol_version: 2,
-            });
-        }
-        Ok(())
-    }
-
-    fn check_protocol_version_saving_modes(&self) -> OpenRgbResult<()> {
-        if self.protocol_id < 3 {
-            return Err(OpenRgbError::UnsupportedOperation {
-                operation: "Saving modes".to_owned(),
-                current_protocol_version: self.protocol_id,
-                min_protocol_version: 3,
+                min_protocol_version: min,
             });
         }
         Ok(())

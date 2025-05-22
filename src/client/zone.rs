@@ -1,14 +1,14 @@
-use crate::{data::ZoneData, Color, OpenRgbError, OpenRgbProtocol, OpenRgbResult, OpenRgbStream};
+use crate::{data::ZoneData, Color, OpenRgbError, OpenRgbProtocol, OpenRgbResult, OpenRgbStream, ProtocolTcpStream};
 
-pub struct Zone<S: OpenRgbStream> {
+pub struct Zone {
     zone_id: u32,
     controller_id: u32,
-    proto: OpenRgbProtocol<S>,
+    proto: OpenRgbProtocol<ProtocolTcpStream>,
     data: ZoneData,
 }
 
-impl<S: OpenRgbStream> Zone<S> {
-    pub fn new(controller_id: u32, zone_id: u32, proto: OpenRgbProtocol<S>, data: ZoneData) -> Self {
+impl Zone {
+    pub fn new(controller_id: u32, zone_id: u32, proto: OpenRgbProtocol<ProtocolTcpStream>, data: ZoneData) -> Self {
         Self {
             zone_id,
             controller_id,

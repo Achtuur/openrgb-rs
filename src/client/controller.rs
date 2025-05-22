@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
-use crate::{data::ModeData, protocol::{data::{Color, ControllerData}, OpenRgbProtocol, OpenRgbStream}, OpenRgbError, OpenRgbResult};
+use crate::{data::ModeData, protocol::{data::{Color, ControllerData}, OpenRgbProtocol, OpenRgbStream}, OpenRgbError, OpenRgbResult, ProtocolTcpStream};
 
 use super::Zone;
 
-pub struct Controller<S: OpenRgbStream> {
+pub struct Controller {
     id: u32,
-    proto: OpenRgbProtocol<S>,
+    proto: OpenRgbProtocol<ProtocolTcpStream>,
     data: ControllerData,
 }
 
-impl<S: OpenRgbStream> Controller<S> {
-    pub fn new(id: u32, proto: OpenRgbProtocol<S>, data: ControllerData) -> Self {
+impl Controller {
+    pub fn new(id: u32, proto: OpenRgbProtocol<ProtocolTcpStream>, data: ControllerData) -> Self {
         Self {
             id,
             proto,
@@ -46,7 +46,7 @@ impl<S: OpenRgbStream> Controller<S> {
         self.data().modes.iter().find(|m| m.name.to_lowercase().contains(pat))
     }
 
-    pub fn get_zone(&self, zone_id: u32) -> OpenRgbResult<Zone<S>> {
+    pub fn get_zone(&self, zone_id: u32) -> OpenRgbResult<Zone> {
         let zone_data = self.data.zones.get(zone_id as usize)
             .ok_or(OpenRgbError::ProtocolError(format!("zone {} not found", zone_id)))?;
         let zone = Zone::new(self.id, zone_id, self.proto.clone(), zone_data.clone());

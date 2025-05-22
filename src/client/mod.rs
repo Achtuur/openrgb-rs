@@ -14,18 +14,17 @@ use tokio::net::{TcpStream, ToSocketAddrs};
 use crate::{
     error::OpenRgbResult,
     protocol::{
-        DEFAULT_ADDR, OpenRgbProtocol, OpenRgbStream,
-        data::{ControllerData, DeviceType, ModeData},
-    },
+        data::{ControllerData, DeviceType, ModeData}, OpenRgbProtocol, OpenRgbStream, DEFAULT_ADDR
+    }, ProtocolTcpStream,
 };
 
 
-pub struct OpenRgbClientWrapper<S: OpenRgbStream> {
+pub struct OpenRgbClientWrapper {
     // todo: make this not public
-    pub proto: OpenRgbProtocol<S>,
+    pub proto: OpenRgbProtocol<ProtocolTcpStream>,
 }
 
-impl OpenRgbClientWrapper<TcpStream> {
+impl OpenRgbClientWrapper {
     /// Connect to default OpenRGB server.
     ///
     /// Use [OpenRGB::connect_to] to connect to a specific server.
@@ -83,10 +82,10 @@ impl OpenRgbClientWrapper<TcpStream> {
     }
 }
 
-impl<S: OpenRgbStream> OpenRgbClientWrapper<S> {
+impl OpenRgbClientWrapper {
     pub async fn get_all_controllers(
         &mut self,
-    ) -> OpenRgbResult<Vec<Controller<S>>> {
+    ) -> OpenRgbResult<Vec<Controller>> {
         let count = self.proto.get_controller_count().await?;
         let mut controllers = Vec::with_capacity(count as usize);
         for id in 0..count {
@@ -96,14 +95,14 @@ impl<S: OpenRgbStream> OpenRgbClientWrapper<S> {
         Ok(controllers)
     }
 
-    pub async fn get_controller(&mut self, i: u32) -> OpenRgbResult<Controller<S>> {
+    pub async fn get_controller(&mut self, i: u32) -> OpenRgbResult<Controller> {
         let c_data = self.proto.get_controller(i).await?;
         Ok(Controller::new(i, self.proto.clone(), c_data))
     }
 }
 
 // delegation if it would exist
-impl<S: OpenRgbStream> OpenRgbClientWrapper<S> {
+impl OpenRgbClientWrapper {
     pub fn get_protocol_version(&mut self) -> u32 {
         self.proto.get_protocol_version()
     }

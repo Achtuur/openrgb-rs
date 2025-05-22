@@ -1,14 +1,22 @@
+use std::io::Read;
+use std::pin::Pin;
+
 use log::debug;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::unix::SocketAddr;
-use tokio::net::TcpStream;
+use tokio::net::{TcpStream, ToSocketAddrs};
 
 use crate::protocol::MAGIC;
 use crate::{OpenRgbError, OpenRgbResult};
 
-use super::{PacketId, TryFromStream, Writable, DEFAULT_ADDR};
+use super::{PacketId, TryFromStream, Writable, DEFAULT_ADDR, DEFAULT_PROTOCOL};
 
-pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
+pub trait ProtocolStream {
+    fn protocol_version(&self) -> u32;
+    fn set_protocol_version(&mut self, version: u32);
+}
+
+pub trait ReadableStream: ProtocolStream + AsyncReadExt + Sized + Send + Sync + Unpin {
     async fn read_value<T: TryFromStream>(&mut self) -> OpenRgbResult<T> {
         T::try_read(self).await
     }
@@ -62,7 +70,7 @@ pub trait ReadableStream: AsyncReadExt + Sized + Send + Sync + Unpin {
     }
 }
 
-pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
+pub trait WritableStream: ProtocolStream + AsyncWriteExt + Sized + Send + Sync + Unpin {
     async fn write_value<T: Writable>(&mut self, value: &T) -> OpenRgbResult<()> {
         T::try_write(value, self).await
     }
@@ -114,6 +122,10 @@ pub trait WritableStream: AsyncWriteExt + Sized + Send + Sync + Unpin {
 }
 
 pub trait OpenRgbStream: ReadableStream + WritableStream {
+    // fn protocol_version(&self) -> u32 {
+    //     <Self as ProtocolStream>::protocol_version(self)
+    // }
+
     async fn request<I: Writable, O: TryFromStream>(
         &mut self,
         device_id: u32,
@@ -125,11 +137,82 @@ pub trait OpenRgbStream: ReadableStream + WritableStream {
     }
 }
 
-impl ReadableStream for TcpStream {}
+impl<S> OpenRgbStream for S where S: ReadableStream + WritableStream {}
 
-impl WritableStream for TcpStream {}
+pub(crate) struct ProtocolTcpStream {
+    stream: TcpStream,
+    protocol_version: u32,
+}
 
-impl OpenRgbStream for TcpStream {}
+impl ProtocolTcpStream {
+    pub async fn connect<A: ToSocketAddrs>(addr: A) -> std::io::Result<Self> {
+        let stream = TcpStream::connect(addr).await?;
+        let protocol_version = DEFAULT_PROTOCOL;
+        Ok(Self {
+            stream,
+            protocol_version,
+        })
+    }
+
+    pub fn local_addr(&self) -> Result<std::net::SocketAddr, std::io::Error> {
+        self.stream.local_addr()
+    }
+}
+
+impl ProtocolStream for ProtocolTcpStream {
+    fn protocol_version(&self) -> u32 {
+        self.protocol_version
+    }
+    
+    fn set_protocol_version(&mut self, version: u32) {
+        self.protocol_version = version;
+    }
+}
+
+impl AsyncRead for ProtocolTcpStream {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        let pin = Pin::new(&mut self.stream);
+        AsyncRead::poll_read(pin, cx, buf)
+    }
+}
+
+impl AsyncWrite for ProtocolTcpStream {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
+        let pin = Pin::new(&mut self.get_mut().stream);
+        AsyncWrite::poll_write(pin, cx, buf)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), std::io::Error>> {
+        let pin = Pin::new(&mut self.get_mut().stream);
+        AsyncWrite::poll_flush(pin, cx)
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), std::io::Error>> {
+        let pin = Pin::new(&mut self.get_mut().stream);
+        AsyncWrite::poll_shutdown(pin, cx)
+    }
+}
+
+impl ReadableStream for ProtocolTcpStream {}
+impl WritableStream for ProtocolTcpStream {}
+
+
+#[cfg(debug_assertions)]
+impl ProtocolStream for Vec<u8> {
+    fn protocol_version(&self) -> u32 {
+        DEFAULT_PROTOCOL
+    }
+
+    fn set_protocol_version(&mut self, _version: u32) {}
+}
 
 #[cfg(debug_assertions)]
 impl WritableStream for Vec<u8> {}
