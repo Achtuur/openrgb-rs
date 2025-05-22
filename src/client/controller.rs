@@ -19,6 +19,16 @@ impl Controller {
         }
     }
 
+    /// Connects to the OpenRGB server with a new client.
+    ///
+    /// This can be done to give each device its own connection.
+    pub async fn connect_new_client(&mut self) -> OpenRgbResult<()> {
+        let new_proto = self.proto.connect_clone().await?;
+        new_proto.set_name(&self.data().name).await?;
+        self.proto = new_proto;
+        Ok(())
+    }
+
     pub fn id(&self) -> u32 {
         self.id
     }
@@ -72,8 +82,12 @@ impl Controller {
             .await
     }
 
-    pub async fn update_zone(&self, zone_id: u32, color: Color) -> OpenRgbResult<()> {
+    pub async fn update_zone(&self, zone_id: u32, color: &[Color]) -> OpenRgbResult<()> {
         let zone = self.get_zone(zone_id)?;
-        zone.update_leds_uniform(color).await
+        zone.update_leds(color).await
+    }
+
+    pub async fn update_zone_leds(&self, zone_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
+        self.proto.update_zone_leds(self.id(), zone_id, colors).await
     }
 }

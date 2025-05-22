@@ -178,6 +178,7 @@ mod tests {
                 active_mode: 0,
                 modes: vec![
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Direct".to_string(),
                         value: 24,
@@ -195,6 +196,7 @@ mod tests {
                         colors: vec![],
                     },
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Static".to_string(),
                         value: 25,
@@ -212,6 +214,7 @@ mod tests {
                         colors: vec![Color { r: 0, g: 0, b: 0 }],
                     },
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Flow".to_string(),
                         value: 0,
@@ -229,6 +232,7 @@ mod tests {
                         colors: vec![],
                     },
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Spectrum".to_string(),
                         value: 4,
@@ -246,6 +250,7 @@ mod tests {
                         colors: vec![],
                     },
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Ripple".to_string(),
                         value: 8,
@@ -263,6 +268,7 @@ mod tests {
                         colors: vec![],
                     },
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Blink".to_string(),
                         value: 12,
@@ -280,6 +286,7 @@ mod tests {
                         colors: vec![],
                     },
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Pulse".to_string(),
                         value: 16,
@@ -297,6 +304,7 @@ mod tests {
                         colors: vec![],
                     },
                     ModeData {
+                        protocol_version: 0,
                         index: u32::MAX,
                         name: "Wave".to_string(),
                         value: 20,

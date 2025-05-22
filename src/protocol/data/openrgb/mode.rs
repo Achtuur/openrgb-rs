@@ -67,6 +67,8 @@ pub struct ModeData {
 
     /// Index of this mode, not part of received packet but set right after reading
     pub index: u32,
+    // for use in self.size() as a workaround to not having the protocol version available there
+    pub protocol_version: u32,
 }
 
 impl TryFromStream for ModeData {
@@ -88,6 +90,7 @@ impl TryFromStream for ModeData {
 
         Ok(ModeData {
             index: u32::MAX,
+            protocol_version: stream.protocol_version(),
             name,
             value,
             flags,
@@ -154,12 +157,14 @@ impl Writable for ModeData {
         size += self.flags.size();
         size += self.speed_min.unwrap_or_default().size();
         size += self.speed_max.unwrap_or_default().size();
+        if self.protocol_version >= 3 {
         size += self.brightness_min.unwrap_or_default().size();
         size += self.brightness_max.unwrap_or_default().size();
+        size += self.brightness.unwrap_or_default().size();
+        }
         size += self.colors_min.unwrap_or_default().size();
         size += self.colors_max.unwrap_or_default().size();
         size += self.speed.unwrap_or_default().size();
-        size += self.brightness.unwrap_or_default().size();
         size += self.direction.unwrap_or_default().size();
         size += self.color_mode.unwrap_or_default().size();
         size += self.colors.size();
@@ -177,10 +182,13 @@ impl Writable for ModeData {
             .write_value(&self.speed_max.unwrap_or_default())
             .await?;
         stream
-            .write_value(&self.brightness_min.unwrap_or_default())
+            .write_value_min_version(&self.brightness_min.unwrap_or_default(), 3)
             .await?;
         stream
-            .write_value(&self.brightness_max.unwrap_or_default())
+            .write_value_min_version(&self.brightness_max.unwrap_or_default(), 3)
+            .await?;
+        stream
+            .write_value_min_version(&self.brightness.unwrap_or_default(), 3)
             .await?;
         stream
             .write_value(&self.colors_min.unwrap_or_default())
@@ -189,9 +197,6 @@ impl Writable for ModeData {
             .write_value(&self.colors_max.unwrap_or_default())
             .await?;
         stream.write_value(&self.speed.unwrap_or_default()).await?;
-        stream
-            .write_value(&self.brightness.unwrap_or_default())
-            .await?;
         stream
             .write_value(&self.direction.unwrap_or_default())
             .await?;
@@ -240,6 +245,7 @@ mod tests {
         assert_eq!(
             stream.read_value::<ModeData>().await?,
             ModeData {
+                protocol_version: 4,
                 index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,
@@ -297,6 +303,7 @@ mod tests {
         assert_eq!(
             stream.read_value::<ModeData>().await?,
             ModeData {
+                protocol_version: 4,
                 index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,
@@ -342,6 +349,7 @@ mod tests {
         assert_eq!(
             stream.read_value::<ModeData>().await?,
             ModeData {
+                protocol_version: 4,
                 index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,
@@ -400,6 +408,7 @@ mod tests {
 
         stream
             .write_value(&ModeData {
+                protocol_version: 4,
                 index: u32::MAX,
                 name: "test".to_string(),
                 value: 46,

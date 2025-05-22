@@ -88,7 +88,7 @@ impl OpenRgbProtocol<ProtocolTcpStream> {
 
     /// Connects a new client using the same address as this client.
     pub(crate) async fn connect_clone(&self) -> OpenRgbResult<Self> {
-        let addr = self.stream.lock().await.local_addr()?;
+        let addr = self.stream.lock().await.peer_addr()?;
         Self::connect_to(addr).await
     }
 }

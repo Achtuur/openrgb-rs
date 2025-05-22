@@ -172,8 +172,8 @@ impl ProtocolTcpStream {
         })
     }
 
-    pub fn local_addr(&self) -> Result<std::net::SocketAddr, std::io::Error> {
-        self.stream.local_addr()
+    pub fn peer_addr(&self) -> Result<std::net::SocketAddr, std::io::Error> {
+        self.stream.peer_addr()
     }
 }
 

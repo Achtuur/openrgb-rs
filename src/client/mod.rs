@@ -12,10 +12,9 @@ pub use {
 use tokio::net::{TcpStream, ToSocketAddrs};
 
 use crate::{
-    error::OpenRgbResult,
-    protocol::{
+    error::OpenRgbResult, protocol::{
         data::{ControllerData, DeviceType, ModeData}, OpenRgbProtocol, OpenRgbStream, DEFAULT_ADDR
-    }, ProtocolTcpStream,
+    }, Color, ProtocolTcpStream
 };
 
 
@@ -133,5 +132,9 @@ impl OpenRgbClientWrapper {
 
     pub async fn save_mode(&self, controller_id: u32, mode: ModeData) -> OpenRgbResult<()> {
         self.proto.save_mode(controller_id, mode).await
+    }
+
+    pub async fn update_zone_leds(&self, controller_id: u32, zone_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
+        self.proto.update_zone_leds(controller_id, zone_id, colors).await
     }
 }
