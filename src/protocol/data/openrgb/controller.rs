@@ -44,10 +44,14 @@ pub struct ControllerData {
     pub colors: Vec<Color>,
 
     /// Alternate names for LEDs (?)
+    ///
+    /// Minimum protocol version: 5
     pub led_alt_names: Vec<String>,
 
-    /// flags (probably internal field that is exposed for some reason)
-    pub flags: u32,
+    /// flags
+    ///
+    /// Minimum protocol version: 5
+    pub flags: Option<u32>,
 
     /// not in protocol, but given by the request used to get this controller
     pub id: u32,
@@ -79,8 +83,8 @@ impl TryFromStream for ControllerData {
 
         let leds = stream.read_value().await?;
         let colors = stream.read_value().await?;
-        let led_alt_names = stream.read_value().await?;
-        let flags = stream.read_value().await?;
+        let led_alt_names = stream.read_value_min_version(5).await?.unwrap_or_default();
+        let flags = stream.read_value_min_version(5).await?;
 
         Ok(ControllerData {
             device_type,

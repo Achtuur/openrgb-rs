@@ -36,12 +36,18 @@ pub struct ModeData {
     pub speed: Option<u32>,
 
     /// Mode minimum brightness (if mode has [ModeFlag::HasBrightness] flag).
+    ///
+    /// Minimum protocol version: 3
     pub brightness_min: Option<u32>,
 
     /// Mode maximum brightness (if mode has [ModeFlag::HasBrightness] flag).
+    ///
+    /// Minimum protocol version: 3
     pub brightness_max: Option<u32>,
 
     /// Mode brightness (if mode has [ModeFlag::HasBrightness] flag).
+    ///
+    /// Minimum protocol version: 3
     pub brightness: Option<u32>,
 
     /// Mode color mode.
@@ -70,12 +76,12 @@ impl TryFromStream for ModeData {
         let flags = stream.read_value().await?;
         let speed_min = stream.read_value().await?;
         let speed_max = stream.read_value().await?;
-        let brightness_min = Some(stream.read_value().await?);
-        let brightness_max = Some(stream.read_value().await?);
+        let brightness_min = stream.read_value_min_version(3).await?;
+        let brightness_max = stream.read_value_min_version(3).await?;
+        let brightness = stream.read_value_min_version(3).await?;
         let colors_min = stream.read_value().await?;
         let colors_max = stream.read_value().await?;
         let speed = stream.read_value().await?;
-        let brightness = Some(stream.read_value().await?);
         let direction = stream.read_value().await?;
         let color_mode = stream.read_value().await?;
         let colors = stream.read_value::<Vec<Color>>().await?;

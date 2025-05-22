@@ -21,6 +21,17 @@ pub trait ReadableStream: ProtocolStream + AsyncReadExt + Sized + Send + Sync + 
         T::try_read(self).await
     }
 
+    /// Reads a value of type T if the protocol version is at least the specified version.
+    ///
+    /// If not, returns `None`.
+    async fn read_value_min_version<T: TryFromStream>(&mut self, version: u32) -> OpenRgbResult<Option<T>> {
+        if self.protocol_version() < version {
+            return Ok(None);
+        }
+        let v: T = self.read_value().await?;
+        Ok(Some(v))
+    }
+
     async fn read_header(
         &mut self,
         expected_device_id: u32,
@@ -75,6 +86,13 @@ pub trait WritableStream: ProtocolStream + AsyncWriteExt + Sized + Send + Sync +
         T::try_write(value, self).await
     }
 
+    async fn write_value_min_version<T: Writable>(&mut self, value: &T, version: u32) -> OpenRgbResult<()> {
+        if self.protocol_version() < version {
+            return Ok(());
+        }
+        self.write_value(value).await
+    }
+
     async fn write_header(
         &mut self,
         device_id: u32,
@@ -105,8 +123,8 @@ pub trait WritableStream: ProtocolStream + AsyncWriteExt + Sized + Send + Sync +
             );
             buf.write_header(device_id, packet_id, size).await?;
             buf.write_value(data).await?;
-            println!("header: {0:?}", &buf[..16]);
-            println!("packet: {0:?}", &buf[16..]);
+            log::trace!("header: {0:?}", &buf[..16]);
+            log::trace!("packet: {0:?}", &buf[16..]);
             self.write_all(&buf).await?;
         }
 

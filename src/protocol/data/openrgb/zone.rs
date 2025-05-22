@@ -31,9 +31,15 @@ pub struct ZoneData {
     /// Zone LED count.
     pub leds_count: u32,
 
+    /// Segments in this zone
+    ///
+    /// Minimum version: 4
     pub segments: Vec<SegmentData>,
 
-    pub flags: u32,
+    /// Flags for this zone.
+    ///
+    /// Minimum version: 5
+    pub flags: Option<u32>,
 
     /// Zone LED matrix (if [Zone::type] is [ZoneType::Matrix]).
     ///
@@ -66,8 +72,8 @@ impl TryFromStream for ZoneData {
             }),
         };
 
-        let segments = stream.read_value().await?;
-        let flags = stream.read_value().await?;
+        let segments = stream.read_value_min_version(4).await?.unwrap_or_default();
+        let flags = stream.read_value_min_version(5).await?;
 
         Ok(ZoneData {
             id: u32::MAX,

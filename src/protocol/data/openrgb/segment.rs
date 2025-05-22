@@ -1,6 +1,5 @@
 use crate::{
-    OpenRgbResult,
-    protocol::{ReadableStream, TryFromStream, Writable, WritableStream},
+    protocol::{ReadableStream, TryFromStream, Writable, WritableStream}, OpenRgbError, OpenRgbResult
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -13,6 +12,12 @@ pub struct SegmentData {
 
 impl TryFromStream for SegmentData {
     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
+        if stream.protocol_version() < 4 {
+            return Err(OpenRgbError::ProtocolError(
+                "SegmentData is not supported in protocol version < 4".to_string(),
+            ));
+        }
+
         let name = stream.read_value().await?;
         let seg_type = stream.read_value().await?;
         let start_idx = stream.read_value().await?;
