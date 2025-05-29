@@ -158,9 +158,9 @@ impl Writable for ModeData {
         size += self.speed_min.unwrap_or_default().size();
         size += self.speed_max.unwrap_or_default().size();
         if self.protocol_version >= 3 {
-        size += self.brightness_min.unwrap_or_default().size();
-        size += self.brightness_max.unwrap_or_default().size();
-        size += self.brightness.unwrap_or_default().size();
+            size += self.brightness_min.unwrap_or_default().size();
+            size += self.brightness_max.unwrap_or_default().size();
+            size += self.brightness.unwrap_or_default().size();
         }
         size += self.colors_min.unwrap_or_default().size();
         size += self.colors_max.unwrap_or_default().size();

@@ -1,5 +1,5 @@
 use crate::{
-    OpenRgbError, OpenRgbResult,
+    OpenRgbResult,
     protocol::{Writable, WritableStream},
 };
 

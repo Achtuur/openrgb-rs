@@ -1,7 +1,5 @@
-use std::mem::size_of;
-
+use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
-use crate::{OpenRgbError, OpenRgbResult};
 
 impl<T: Writable> Writable for Vec<T> {
     fn size(&self) -> usize {

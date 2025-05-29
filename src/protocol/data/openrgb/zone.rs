@@ -68,7 +68,7 @@ impl TryFromStream for ZoneData {
                 for _ in 0..matrix_size {
                     matrix_data.push(stream.read_value().await?);
                 }
-                Array2D::from_row_major(&matrix_data, matrix_height, matrix_width)
+                Array2D::from_row_major(&matrix_data, matrix_height, matrix_width).unwrap()
             }),
         };
 
@@ -124,7 +124,7 @@ mod tests {
                 leds_count: 15,
                 matrix: None,
                 segments: vec![],
-                flags: 0,
+                flags: None,
                 id: u32::MAX,
             }
         );
@@ -162,9 +162,9 @@ mod tests {
                 leds_min: 3,
                 leds_max: 18,
                 leds_count: 15,
-                matrix: Some(Array2D::from_rows(&[vec![0, 1, 2], vec![3, 4, 5]])),
+                matrix: Some(Array2D::from_rows(&[vec![0, 1, 2], vec![3, 4, 5]]).unwrap()),
                 segments: vec![],
-                flags: 0,
+                flags: None,
                 id: u32::MAX,
             }
         );

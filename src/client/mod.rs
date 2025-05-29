@@ -1,22 +1,17 @@
 //! Wrapper around the OpenRGB client to make it friendlier to use.
-use std::collections::HashMap;
 
 mod controller;
 mod zone;
 
-pub use {
-    controller::*,
-    zone::*,
-};
+pub use {controller::*, zone::*};
 
-use tokio::net::{TcpStream, ToSocketAddrs};
+use tokio::net::ToSocketAddrs;
 
 use crate::{
-    error::OpenRgbResult, protocol::{
-        data::{ControllerData, DeviceType, ModeData}, OpenRgbProtocol, OpenRgbStream, DEFAULT_ADDR
-    }, Color, ProtocolTcpStream
+    Color, ProtocolTcpStream,
+    error::OpenRgbResult,
+    protocol::{DEFAULT_ADDR, OpenRgbProtocol, data::ModeData},
 };
-
 
 pub struct OpenRgbClientWrapper {
     // todo: make this not public
@@ -68,23 +63,17 @@ impl OpenRgbClientWrapper {
         addr: impl ToSocketAddrs + std::fmt::Debug + Copy,
     ) -> OpenRgbResult<Self> {
         let client = OpenRgbProtocol::connect_to(addr).await?;
-        Ok(Self {
-            proto: client,
-        })
+        Ok(Self { proto: client })
     }
 
     pub(crate) async fn connect_clone(&self) -> OpenRgbResult<Self> {
         let client = self.proto.connect_clone().await?;
-        Ok(Self {
-            proto: client,
-        })
+        Ok(Self { proto: client })
     }
 }
 
 impl OpenRgbClientWrapper {
-    pub async fn get_all_controllers(
-        &mut self,
-    ) -> OpenRgbResult<Vec<Controller>> {
+    pub async fn get_all_controllers(&mut self) -> OpenRgbResult<Vec<Controller>> {
         let count = self.proto.get_controller_count().await?;
         let mut controllers = Vec::with_capacity(count as usize);
         for id in 0..count {
@@ -134,7 +123,14 @@ impl OpenRgbClientWrapper {
         self.proto.save_mode(controller_id, mode).await
     }
 
-    pub async fn update_zone_leds(&self, controller_id: u32, zone_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
-        self.proto.update_zone_leds(controller_id, zone_id, colors).await
+    pub async fn update_zone_leds(
+        &self,
+        controller_id: u32,
+        zone_id: u32,
+        colors: &[Color],
+    ) -> OpenRgbResult<()> {
+        self.proto
+            .update_zone_leds(controller_id, zone_id, colors)
+            .await
     }
 }

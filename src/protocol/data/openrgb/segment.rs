@@ -1,5 +1,6 @@
 use crate::{
-    protocol::{ReadableStream, TryFromStream, Writable, WritableStream}, OpenRgbError, OpenRgbResult
+    OpenRgbError, OpenRgbResult,
+    protocol::{ReadableStream, TryFromStream, Writable, WritableStream},
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]

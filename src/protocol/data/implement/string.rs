@@ -3,7 +3,6 @@ use std::mem::size_of;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
-
 impl Writable for &str {
     fn size(&self) -> usize {
         size_of::<u16>() // string is preceded by its length
@@ -23,7 +22,7 @@ impl Writable for &str {
 
 impl Writable for String {
     fn size(&self) -> usize {
-       self.as_str().size()
+        self.as_str().size()
     }
 
     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
@@ -45,7 +44,7 @@ impl TryFromStream for String {
 #[doc(hidden)]
 pub struct RawString<'a>(pub &'a str);
 
-impl<'a> Writable for RawString<'a> {
+impl Writable for RawString<'_> {
     fn size(&self) -> usize {
         self.0.len() + 1 // null terminator
     }

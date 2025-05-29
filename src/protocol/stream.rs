@@ -1,15 +1,13 @@
-use std::io::Read;
 use std::pin::Pin;
 
 use log::debug;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::net::unix::SocketAddr;
 use tokio::net::{TcpStream, ToSocketAddrs};
 
 use crate::protocol::MAGIC;
 use crate::{OpenRgbError, OpenRgbResult};
 
-use super::{PacketId, TryFromStream, Writable, DEFAULT_ADDR, DEFAULT_PROTOCOL};
+use super::{DEFAULT_PROTOCOL, PacketId, TryFromStream, Writable};
 
 pub trait ProtocolStream {
     fn protocol_version(&self) -> u32;
@@ -24,7 +22,10 @@ pub trait ReadableStream: ProtocolStream + AsyncReadExt + Sized + Send + Sync + 
     /// Reads a value of type T if the protocol version is at least the specified version.
     ///
     /// If not, returns `None`.
-    async fn read_value_min_version<T: TryFromStream>(&mut self, version: u32) -> OpenRgbResult<Option<T>> {
+    async fn read_value_min_version<T: TryFromStream>(
+        &mut self,
+        version: u32,
+    ) -> OpenRgbResult<Option<T>> {
         if self.protocol_version() < version {
             return Ok(None);
         }
@@ -86,7 +87,11 @@ pub trait WritableStream: ProtocolStream + AsyncWriteExt + Sized + Send + Sync +
         T::try_write(value, self).await
     }
 
-    async fn write_value_min_version<T: Writable>(&mut self, value: &T, version: u32) -> OpenRgbResult<()> {
+    async fn write_value_min_version<T: Writable>(
+        &mut self,
+        value: &T,
+        version: u32,
+    ) -> OpenRgbResult<()> {
         if self.protocol_version() < version {
             return Ok(());
         }
@@ -181,7 +186,7 @@ impl ProtocolStream for ProtocolTcpStream {
     fn protocol_version(&self) -> u32 {
         self.protocol_version
     }
-    
+
     fn set_protocol_version(&mut self, version: u32) {
         self.protocol_version = version;
     }
@@ -208,12 +213,18 @@ impl AsyncWrite for ProtocolTcpStream {
         AsyncWrite::poll_write(pin, cx, buf)
     }
 
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), std::io::Error>> {
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
         let pin = Pin::new(&mut self.get_mut().stream);
         AsyncWrite::poll_flush(pin, cx)
     }
 
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), std::io::Error>> {
+    fn poll_shutdown(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
         let pin = Pin::new(&mut self.get_mut().stream);
         AsyncWrite::poll_shutdown(pin, cx)
     }
@@ -221,7 +232,6 @@ impl AsyncWrite for ProtocolTcpStream {
 
 impl ReadableStream for ProtocolTcpStream {}
 impl WritableStream for ProtocolTcpStream {}
-
 
 #[cfg(debug_assertions)]
 impl ProtocolStream for Vec<u8> {

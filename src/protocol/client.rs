@@ -3,7 +3,7 @@ use std::net::Ipv4Addr;
 use std::sync::Arc;
 
 use log::debug;
-use tokio::net::{TcpStream, ToSocketAddrs};
+use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
 use super::data::{Color, ControllerData, ModeData, RawString, SegmentData};
@@ -30,7 +30,10 @@ pub struct OpenRgbProtocol<S: OpenRgbStream> {
 
 impl<S: OpenRgbStream> Clone for OpenRgbProtocol<S> {
     fn clone(&self) -> Self {
-        Self { protocol_id: self.protocol_id, stream: self.stream.clone() }
+        Self {
+            protocol_id: self.protocol_id,
+            stream: self.stream.clone(),
+        }
     }
 }
 
@@ -114,7 +117,6 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
             stream: Arc::new(Mutex::new(stream)),
         })
     }
-
 
     /// Get protocol version negotiated with server.
     ///
@@ -239,7 +241,12 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
             .await
     }
 
-    pub async fn add_segment(&self, controller_id: u32, zone_id: u32, segment: &SegmentData) -> OpenRgbResult<()> {
+    pub async fn add_segment(
+        &self,
+        controller_id: u32,
+        zone_id: u32,
+        segment: &SegmentData,
+    ) -> OpenRgbResult<()> {
         self.check_protocol_version(5, "Add Segment")?;
         let data_size = size_of::<u32>() + zone_id.size() + segment.size();
         self.stream
@@ -316,11 +323,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     /// Update a mode. This sets it to the current mode.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_updatemode) for more information.
-    pub async fn update_mode(
-        &self,
-        controller_id: u32,
-        mode: &ModeData,
-    ) -> OpenRgbResult<()> {
+    pub async fn update_mode(&self, controller_id: u32, mode: &ModeData) -> OpenRgbResult<()> {
         // count the data_size field too
         let size = size_of::<u32>() + mode.index.size() + mode.size();
         self.stream

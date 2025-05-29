@@ -167,7 +167,7 @@ mod tests {
             ControllerData {
                 id: 0,
                 led_alt_names: Vec::new(),
-                flags: 0,
+                flags: None,
                 device_type: DeviceType::Cooler,
                 name: "Thermaltake Riing".to_string(),
                 vendor: "Thermaltake".to_string(),
@@ -331,7 +331,7 @@ mod tests {
                         leds_count: 0,
                         matrix: None,
                         segments: Vec::new(),
-                        flags: 0,
+                        flags: None,
                         id: 0,
                     },
                     ZoneData {
@@ -342,7 +342,7 @@ mod tests {
                         leds_count: 0,
                         matrix: None,
                         segments: Vec::new(),
-                        flags: 0,
+                        flags: None,
                         id: 0,
                     },
                     ZoneData {
@@ -353,7 +353,7 @@ mod tests {
                         leds_count: 0,
                         matrix: None,
                         segments: Vec::new(),
-                        flags: 0,
+                        flags: None,
                         id: 0,
                     },
                     ZoneData {
@@ -364,7 +364,7 @@ mod tests {
                         leds_count: 0,
                         matrix: None,
                         segments: Vec::new(),
-                        flags: 0,
+                        flags: None,
                         id: 0,
                     },
                     ZoneData {
@@ -375,7 +375,7 @@ mod tests {
                         leds_count: 0,
                         matrix: None,
                         segments: Vec::new(),
-                        flags: 0,
+                        flags: None,
                         id: 0,
                     },
                 ],

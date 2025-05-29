@@ -1,6 +1,4 @@
-
 use crate::OpenRgbResult;
-
 
 mod client;
 pub(crate) mod data;
@@ -9,11 +7,7 @@ mod stream;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use {
-    client::*,
-    packet::*,
-    stream::*,
-};
+pub(crate) use {client::*, packet::*, stream::*};
 
 pub use data::Color;
 

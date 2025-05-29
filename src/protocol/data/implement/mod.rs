@@ -2,8 +2,8 @@
 
 mod array;
 mod primitive;
-mod string;
 mod slice;
+mod string;
 mod tuple;
 mod vec;
 

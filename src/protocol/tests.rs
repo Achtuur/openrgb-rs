@@ -5,17 +5,23 @@ use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
 use tokio_test::io::{Builder, Mock};
 
-use super::OpenRgbProtocol;
+use super::{OpenRgbProtocol, ProtocolStream};
 use crate::{
     OpenRgbResult,
     protocol::{DEFAULT_PROTOCOL, OpenRgbStream, ReadableStream, WritableStream},
 };
 
+impl ProtocolStream for Mock {
+    fn protocol_version(&self) -> u32 {
+        0
+    }
+
+    fn set_protocol_version(&mut self, _version: u32) {}
+}
+
 impl ReadableStream for Mock {}
 
 impl WritableStream for Mock {}
-
-impl OpenRgbStream for Mock {}
 
 static INIT_ONCE: Once = Once::new();
 

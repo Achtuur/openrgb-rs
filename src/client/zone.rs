@@ -1,4 +1,6 @@
-use crate::{data::ZoneData, Color, OpenRgbError, OpenRgbProtocol, OpenRgbResult, OpenRgbStream, ProtocolTcpStream};
+use crate::{
+    Color, OpenRgbError, OpenRgbProtocol, OpenRgbResult, ProtocolTcpStream, data::ZoneData,
+};
 
 pub struct Zone {
     zone_id: u32,
@@ -8,7 +10,12 @@ pub struct Zone {
 }
 
 impl Zone {
-    pub fn new(controller_id: u32, zone_id: u32, proto: OpenRgbProtocol<ProtocolTcpStream>, data: ZoneData) -> Self {
+    pub fn new(
+        controller_id: u32,
+        zone_id: u32,
+        proto: OpenRgbProtocol<ProtocolTcpStream>,
+        data: ZoneData,
+    ) -> Self {
         Self {
             zone_id,
             controller_id,
@@ -29,11 +36,14 @@ impl Zone {
         if colors.len() != self.data.leds_count as usize {
             return Err(OpenRgbError::ProtocolError(format!(
                 "Invalid number of colors: expected {}, got {}",
-                self.data.leds_count, colors.len()
+                self.data.leds_count,
+                colors.len()
             )));
         }
 
-        self.proto.update_zone_leds(self.controller_id(), self.zone_id(), colors).await
+        self.proto
+            .update_zone_leds(self.controller_id(), self.zone_id(), colors)
+            .await
     }
 
     pub async fn update_leds_uniform(&self, color: Color) -> OpenRgbResult<()> {
