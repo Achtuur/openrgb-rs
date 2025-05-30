@@ -8,7 +8,12 @@ impl<T: Writable, const N: usize> Writable for [T; N] {
         self.as_slice().size()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        self.as_slice().try_write(stream).await
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        let mut n = 0;
+        for item in self.iter() {
+            n += item.try_write(stream).await?;
+        }
+        Ok(n)
     }
 }
+

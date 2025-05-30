@@ -38,12 +38,12 @@ impl Writable for SegmentData {
         self.name.size() + self.seg_type.size() + self.start_idx.size() + self.led_count.size()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(&self.name).await?;
-        stream.write_value(&self.seg_type).await?;
-        stream.write_value(&self.start_idx).await?;
-        stream.write_value(&self.led_count).await?;
-
-        Ok(())
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        let mut n = 0;
+        n += stream.write_value(&self.name).await?;
+        n += stream.write_value(&self.seg_type).await?;
+        n += stream.write_value(&self.start_idx).await?;
+        n += stream.write_value(&self.led_count).await?;
+        Ok(n)
     }
 }

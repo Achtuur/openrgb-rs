@@ -2,19 +2,19 @@ use crate::{
     Color, OpenRgbError, OpenRgbProtocol, OpenRgbResult, ProtocolTcpStream, data::ZoneData,
 };
 
-pub struct Zone {
+pub struct Zone<'a> {
     zone_id: u32,
     controller_id: u32,
-    proto: OpenRgbProtocol<ProtocolTcpStream>,
-    data: ZoneData,
+    proto: &'a OpenRgbProtocol<ProtocolTcpStream>,
+    data: &'a ZoneData,
 }
 
-impl Zone {
+impl<'a> Zone<'a> {
     pub fn new(
         controller_id: u32,
         zone_id: u32,
-        proto: OpenRgbProtocol<ProtocolTcpStream>,
-        data: ZoneData,
+        proto: &'a OpenRgbProtocol<ProtocolTcpStream>,
+        data: &'a ZoneData,
     ) -> Self {
         Self {
             zone_id,
@@ -30,6 +30,28 @@ impl Zone {
 
     pub fn zone_id(&self) -> u32 {
         self.zone_id
+    }
+
+    pub fn num_leds(&self) -> usize {
+        self.data.leds_count as usize
+    }
+
+    /// Resizes `colors` to fit the number of LEDs in this zone.
+    pub fn resize_colors_to_fit(&self, colors: &mut Vec<Color>) {
+        colors.resize(self.num_leds(), Color::default());
+    }
+
+    /// Returns an iterator that yields a color for each LED in the zone.
+    ///
+    /// If `color` is too short, it will be padded with black.
+    /// If `colors` is longer than the number of leds in the zone, it is truncated.
+    pub fn zone_colors_from_iter<I>(&self, colors: I) -> impl IntoIterator<Item = Color> + use<I>
+    where
+        I: IntoIterator<Item = Color>,
+    {
+        let mut colors = colors.into_iter();
+        (0..self.num_leds()).map(move |_| colors.next().unwrap_or_default())
+
     }
 
     pub async fn update_leds(&self, colors: &[Color]) -> OpenRgbResult<()> {

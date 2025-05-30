@@ -7,7 +7,7 @@ use crate::{
     },
 };
 
-use super::Zone;
+use super::{zone, Zone};
 
 pub struct Controller {
     id: u32,
@@ -75,21 +75,21 @@ impl Controller {
             .find(|m| m.name.to_lowercase().contains(pat))
     }
 
-    pub fn get_zone(&self, zone_id: u32) -> OpenRgbResult<Zone> {
-        let zone_data =
-            self.data
-                .zones
-                .get(zone_id as usize)
-                .ok_or(OpenRgbError::ProtocolError(format!(
-                    "zone {} not found",
-                    zone_id
-                )))?;
-        let zone = Zone::new(self.id, zone_id, self.proto.clone(), zone_data.clone());
+    pub fn get_zone<'a>(&'a self, zone_id: u32) -> OpenRgbResult<Zone<'a>> {
+        let zone_data = self
+            .data
+            .zones
+            .get(zone_id as usize)
+            .ok_or(OpenRgbError::ProtocolError(format!(
+                "zone {} not found",
+                zone_id
+            )))?;
+        let zone = Zone::new(self.id, zone_id, &self.proto, zone_data);
         Ok(zone)
     }
 
     pub async fn update_led(&self, led: i32, color: Color) -> OpenRgbResult<()> {
-        self.proto.update_led(self.id(), led, color).await
+        self.proto.update_led(self.id(), led, &color).await
     }
 
     pub async fn update_all_leds(&self, color: Color) -> OpenRgbResult<()> {
@@ -108,28 +108,40 @@ impl Controller {
         self.proto.update_leds(self.id(), colors).await
     }
 
-    // pub async fn update_zone(&self, zone_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
-    //     let zone = self.get_zone(zone_id)?;
-    //     zone.update_leds(colors).await
-    // }
+    pub async fn update_zone(&self, zone_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
+        self.get_zone(zone_id)?.update_leds(colors).await
+    }
 
-    pub async fn update_zone_leds(&self, zone_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
-        self.proto
-            .update_zone_leds(self.id(), zone_id, colors)
-            .await
+    /// Updates multiple zones with their respective colors.
+    ///
+    /// # Important
+    ///
+    /// The zone id's and colors MUST BE IN ORDER
+    ///
+    /// Pads the colors with black if the number of colors is less than the number of LEDs in the zone.
+    pub async fn update_multiple_zones(&self, zone_colors: impl IntoIterator<Item = (u32, impl IntoIterator<Item = Color>)>) -> OpenRgbResult<()> {
+        let colors = zone_colors
+        .into_iter()
+        .filter_map(|(z_id, c)| {
+            let zone = self.get_zone(z_id).ok()?;
+            Some(zone.zone_colors_from_iter(c))
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+        self.update_leds(&colors).await
     }
 
     pub async fn disable_all_leds(&self) -> OpenRgbResult<()> {
-        match self.set_disabled_mode().await {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                // tracing::warn!(
-                //     "Failed to set disabled mode for controller {}: {}",
-                //     self.id, e
-                // );
-                self.set_controllable_mode().await?;
-                self.update_all_leds(Color {r: 0, g: 0, b: 0}).await
-            }
-        }
+        // match self.set_disabled_mode().await {
+        //     Ok(_) => Ok(()),
+        //     Err(e) => {
+        //         // tracing::warn!(
+        //         //     "Failed to set disabled mode for controller {}: {}",
+        //         //     self.id, e
+        //         // );
+        //     }
+        // }
+        self.set_controllable_mode().await?;
+        self.update_all_leds(Color {r: 0, g: 0, b: 0}).await
     }
 }

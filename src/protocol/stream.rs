@@ -83,17 +83,20 @@ pub trait ReadableStream: ProtocolStream + AsyncReadExt + Sized + Send + Sync + 
 }
 
 pub trait WritableStream: ProtocolStream + AsyncWriteExt + Sized + Send + Sync + Unpin {
-    async fn write_value<T: Writable>(&mut self, value: &T) -> OpenRgbResult<()> {
-        T::try_write(value, self).await
+    /// Writes a value of type T to the stream, returns the number of bytes written.
+    async fn write_value<T: Writable>(&mut self, value: &T) -> OpenRgbResult<usize> {
+        let n = T::try_write(value, self).await?;
+        assert!(n == value.size(), "size mismatch: expected {}, got {}", value.size(), n);
+        Ok(n)
     }
 
     async fn write_value_min_version<T: Writable>(
         &mut self,
         value: &T,
         version: u32,
-    ) -> OpenRgbResult<()> {
+    ) -> OpenRgbResult<usize> {
         if self.protocol_version() < version {
-            return Ok(());
+            return Ok(0);
         }
         self.write_value(value).await
     }

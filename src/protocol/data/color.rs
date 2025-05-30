@@ -15,7 +15,7 @@ impl TryFromStream for Color {
         let r = stream.read_value().await?;
         let g = stream.read_value().await?;
         let b = stream.read_value().await?;
-        let _padding = stream.read_value::<u8>().await?;
+        let _ = stream.read_value::<u8>().await?;
         Ok(Color { r, g, b })
     }
 }
@@ -25,14 +25,15 @@ impl Writable for Color {
         4 * size_of::<u8>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(&self.r).await?;
-        stream.write_value(&self.g).await?;
-        stream.write_value(&self.b).await?;
-        stream.write_value(&0u8).await?;
-        Ok(())
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        let s= stream.write_value(&self.r).await?;
+        let s1= stream.write_value(&self.g).await?;
+        let s2= stream.write_value(&self.b).await?;
+        let s3= stream.write_value(&0u8).await?;
+        Ok(s + s1 + s2 + s3)
     }
 }
+
 
 #[cfg(test)]
 mod tests {

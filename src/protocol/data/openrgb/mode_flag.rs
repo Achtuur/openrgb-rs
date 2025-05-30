@@ -51,7 +51,7 @@ impl Writable for FlagSet<ModeFlag> {
         size_of::<u32>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         stream.write_value(&self.bits()).await
     }
 }

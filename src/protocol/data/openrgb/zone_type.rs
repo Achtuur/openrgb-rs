@@ -26,7 +26,7 @@ impl Writable for ZoneType {
         size_of::<u32>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         let num = *self as u32;
         stream.write_value(&num).await
     }

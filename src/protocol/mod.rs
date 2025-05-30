@@ -21,8 +21,10 @@ pub trait TryFromStream: Sized + Send + Sync {
 /// Things that can write itself to a stream
 #[doc(hidden)]
 pub trait Writable: Sized + Send + Sync {
+    /// Size of this data when written to a stream
     fn size(&self) -> usize;
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()>;
+    /// Write this data to a stream. The return value should equal `self.size()`
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize>;
 }
 
 impl<T: Writable> Writable for &T {
@@ -30,7 +32,7 @@ impl<T: Writable> Writable for &T {
         (*self).size()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         (*self).try_write(stream).await
     }
 }

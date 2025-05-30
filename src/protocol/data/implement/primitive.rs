@@ -8,8 +8,8 @@ impl Writable for () {
         0
     }
 
-    async fn try_write(&self, _stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        Ok(())
+    async fn try_write(&self, _stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        Ok(0)
     }
 }
 
@@ -24,8 +24,9 @@ impl Writable for u8 {
         size_of::<u8>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_u8(*self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        stream.write_u8(*self).await?;
+        Ok(1)
     }
 }
 
@@ -40,8 +41,9 @@ impl Writable for u16 {
         size_of::<u16>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_u16_le(*self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        stream.write_u16_le(*self).await?;
+        Ok(2)
     }
 }
 
@@ -56,8 +58,9 @@ impl Writable for u32 {
         size_of::<u32>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_u32_le(*self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        stream.write_u32_le(*self).await?;
+        Ok(4)
     }
 }
 
@@ -72,8 +75,9 @@ impl Writable for i32 {
         size_of::<i32>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_i32_le(*self).await.map_err(Into::into)
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        stream.write_i32_le(*self).await?;
+        Ok(4)
     }
 }
 
@@ -88,7 +92,7 @@ impl Writable for usize {
         size_of::<u32>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         let val = u32::try_from(*self).map_err(|e| {
             OpenRgbError::ProtocolError(format!(
                 "Data size is too large to encode: {} ({})",

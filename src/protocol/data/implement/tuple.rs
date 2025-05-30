@@ -1,76 +1,42 @@
 use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 
-impl<A: Writable, B: Writable> Writable for (A, B) {
-    fn size(&self) -> usize {
-        self.0.size() + self.1.size()
-    }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(&self.0).await?;
-        stream.write_value(&self.1).await?;
-        Ok(())
+macro_rules! impl_tuple {
+    ($($idx:tt $t:tt),+) => {
+        impl<$($t: Writable),+> Writable for ($($t,)+) {
+            fn size(&self) -> usize {
+                0 $(+ self.$idx.size())+
+            }
+
+            async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+                let mut n = 0;
+                $(
+                    n += stream.write_value(&self.$idx).await?;
+                )+
+                Ok(n)
+            }
+        }
+
+        impl<$($t: TryFromStream),+> TryFromStream for ($($t,)+) {
+            async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
+                Ok((
+                    $(
+                        stream.read_value::<$t>().await?,
+                    )+
+                ))
+            }
+        }
     }
 }
 
-impl<A: TryFromStream, B: TryFromStream> TryFromStream for (A, B) {
-    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-        Ok((
-            stream.read_value::<A>().await?,
-            stream.read_value::<B>().await?,
-        ))
-    }
-}
+impl_tuple!(0 A);
+impl_tuple!(0 A, 1 B);
+impl_tuple!(0 A, 1 B, 2 C);
+impl_tuple!(0 A, 1 B, 2 C, 3 D);
+impl_tuple!(0 A, 1 B, 2 C, 3 D, 4 E);
 
-impl<A: Writable, B: Writable, C: Writable> Writable for (A, B, C) {
-    fn size(&self) -> usize {
-        self.0.size() + self.1.size() + self.2.size()
-    }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(&self.0).await?;
-        stream.write_value(&self.1).await?;
-        stream.write_value(&self.2).await?;
-        Ok(())
-    }
-}
-
-impl<A: TryFromStream, B: TryFromStream, C: TryFromStream> TryFromStream for (A, B, C) {
-    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-        Ok((
-            stream.read_value::<A>().await?,
-            stream.read_value::<B>().await?,
-            stream.read_value::<C>().await?,
-        ))
-    }
-}
-
-impl<A: Writable, B: Writable, C: Writable, D: Writable> Writable for (A, B, C, D) {
-    fn size(&self) -> usize {
-        self.0.size() + self.1.size() + self.2.size() + self.3.size()
-    }
-
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(&self.0).await?;
-        stream.write_value(&self.1).await?;
-        stream.write_value(&self.2).await?;
-        stream.write_value(&self.3).await?;
-        Ok(())
-    }
-}
-
-impl<A: TryFromStream, B: TryFromStream, C: TryFromStream, D: TryFromStream> TryFromStream
-    for (A, B, C, D)
-{
-    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-        Ok((
-            stream.read_value::<A>().await?,
-            stream.read_value::<B>().await?,
-            stream.read_value::<C>().await?,
-            stream.read_value::<D>().await?,
-        ))
-    }
-}
 
 #[cfg(test)]
 mod tests {

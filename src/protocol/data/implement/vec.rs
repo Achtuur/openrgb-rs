@@ -2,15 +2,14 @@ use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 
 impl<T: Writable> Writable for Vec<T> {
+    // impl is forwarded to &[T] implementation
+
     fn size(&self) -> usize {
         self.as_slice().size()
-        // size_of::<u16>() // vec is preceded by its length
-        // + self.iter().map(|e| e.size()).sum::<usize>()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        self.as_slice().try_write(stream).await?;
-        Ok(())
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        self.as_slice().try_write(stream).await
     }
 }
 

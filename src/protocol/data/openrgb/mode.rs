@@ -171,40 +171,41 @@ impl Writable for ModeData {
         size
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
-        stream.write_value(&self.name).await?;
-        stream.write_value(&self.value).await?;
-        stream.write_value(&self.flags).await?;
-        stream
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
+        let mut n = 0;
+        n += stream.write_value(&self.name).await?;
+        n += stream.write_value(&self.value).await?;
+        n += stream.write_value(&self.flags).await?;
+        n += stream
             .write_value(&self.speed_min.unwrap_or_default())
             .await?;
-        stream
+        n += stream
             .write_value(&self.speed_max.unwrap_or_default())
             .await?;
-        stream
+        n += stream
             .write_value_min_version(&self.brightness_min.unwrap_or_default(), 3)
             .await?;
-        stream
+        n += stream
             .write_value_min_version(&self.brightness_max.unwrap_or_default(), 3)
             .await?;
-        stream
+        n += stream
             .write_value_min_version(&self.brightness.unwrap_or_default(), 3)
             .await?;
-        stream
+        n += stream
             .write_value(&self.colors_min.unwrap_or_default())
             .await?;
-        stream
+        n += stream
             .write_value(&self.colors_max.unwrap_or_default())
             .await?;
-        stream.write_value(&self.speed.unwrap_or_default()).await?;
-        stream
+        n += stream.write_value(&self.speed.unwrap_or_default()).await?;
+        n += stream
             .write_value(&self.direction.unwrap_or_default())
             .await?;
-        stream
+        n += stream
             .write_value(&self.color_mode.unwrap_or_default())
             .await?;
-        stream.write_value(&self.colors).await?;
-        Ok(())
+        n += stream.write_value(&self.colors).await?;
+        Ok(n)
     }
 }
 

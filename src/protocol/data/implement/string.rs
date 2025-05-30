@@ -10,7 +10,7 @@ impl Writable for &str {
         + 1 // null terminator
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         let padded_len = (self.len() + 1) as u16;
         stream.write_value(&padded_len).await?;
         // stream.write_value(&(self.len() + 1) as u16).await?;
@@ -25,7 +25,7 @@ impl Writable for String {
         self.as_str().size()
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         self.as_str().try_write(stream).await
     }
 }
@@ -46,17 +46,13 @@ pub struct RawString<'a>(pub &'a str);
 
 impl Writable for RawString<'_> {
     fn size(&self) -> usize {
-        self.0.len() + 1 // null terminator
+        self.0.as_bytes().len() + 1 // null terminator
     }
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<()> {
+    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         stream.write_all(self.0.as_bytes()).await?;
         stream.write_all(b"\0").await?;
-        Ok(())
-        // stream
-        //     .write_all(format!("{}\0", self.0).as_bytes())
-        //     .await
-        //     .map_err(Into::into)
+        Ok(self.0.as_bytes().len() + 1)
     }
 }
 
