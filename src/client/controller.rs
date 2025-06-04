@@ -100,12 +100,13 @@ impl Controller {
             .map(|zone| zone.leds_count)
             .sum::<u32>() as usize;
         let colors = vec![color; n_leds];
-        self.update_leds(&colors).await?;
+        self.update_leds(colors).await?;
         Ok(())
     }
 
-    pub async fn update_leds(&self, colors: &[Color]) -> OpenRgbResult<()> {
-        self.proto.update_leds(self.id(), colors).await
+    pub async fn update_leds(&self, colors: impl IntoIterator<Item = Color>) -> OpenRgbResult<()> {
+        let color_v = colors.into_iter().collect::<Vec<_>>();
+        self.proto.update_leds(self.id(), color_v.as_slice()).await
     }
 
     pub async fn update_zone(&self, zone_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
@@ -120,15 +121,27 @@ impl Controller {
     ///
     /// Pads the colors with black if the number of colors is less than the number of LEDs in the zone.
     pub async fn update_multiple_zones(&self, zone_colors: impl IntoIterator<Item = (u32, impl IntoIterator<Item = Color>)>) -> OpenRgbResult<()> {
+        let mut zone_id_iter = 0..self.data().zones.len();
         let colors = zone_colors
         .into_iter()
-        .filter_map(|(z_id, c)| {
+        .filter_map(|(z_id, colors)| {
+            // add padding for all zones up to this zone
+            let mut colors_up_til_this_zone = Vec::new();
+            for id in zone_id_iter.by_ref() {
+                if id as u32 == z_id {
+                    break; // found the zone
+                }
+                let padding = vec![Color::default(); self.data().zones[id].leds_count as usize];
+                colors_up_til_this_zone.extend(padding);
+            }
+
             let zone = self.get_zone(z_id).ok()?;
-            Some(zone.zone_colors_from_iter(c))
+            let c = zone.zone_colors_from_iter(colors);
+            colors_up_til_this_zone.extend(c);
+            Some(colors_up_til_this_zone)
         })
-        .flatten()
-        .collect::<Vec<_>>();
-        self.update_leds(&colors).await
+        .flatten();
+        self.update_leds(colors).await
     }
 
     pub async fn disable_all_leds(&self) -> OpenRgbResult<()> {

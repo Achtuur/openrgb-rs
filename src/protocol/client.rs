@@ -206,18 +206,17 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     /// - `[u32]` - colors
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_updateleds) for more information.
-    pub async fn update_leds(&self, controller_id: u32, colors: impl IntoIterator<Item = &Color>) -> OpenRgbResult<()> {
+    pub async fn update_leds(&self, controller_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
         // todo: optimise this maybe so that we don't allocate a Vec
         // this would mean that we write the data byte last
-        let color_v = colors.into_iter().collect::<Vec<_>>();
-        let size = color_v.size() + size_of::<u32>(); // count the data_size field too
+        let size = colors.size() + size_of::<u32>(); // count the data_size field too
         self.stream
             .lock()
             .await
             .write_packet(
                 controller_id,
                 PacketId::RGBControllerUpdateLeds,
-                &(size, color_v),
+                &(size, colors),
             )
             .await
     }

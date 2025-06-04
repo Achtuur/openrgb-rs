@@ -26,7 +26,7 @@ impl Writable for u8 {
 
     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         stream.write_u8(*self).await?;
-        Ok(1)
+        Ok(size_of::<u8>())
     }
 }
 
@@ -43,7 +43,7 @@ impl Writable for u16 {
 
     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         stream.write_u16_le(*self).await?;
-        Ok(2)
+        Ok(size_of::<u16>())
     }
 }
 
@@ -60,7 +60,7 @@ impl Writable for u32 {
 
     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         stream.write_u32_le(*self).await?;
-        Ok(4)
+        Ok(size_of::<u32>())
     }
 }
 
@@ -77,7 +77,7 @@ impl Writable for i32 {
 
     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         stream.write_i32_le(*self).await?;
-        Ok(4)
+        Ok(size_of::<i32>())
     }
 }
 

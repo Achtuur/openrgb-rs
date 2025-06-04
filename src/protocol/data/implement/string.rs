@@ -12,9 +12,10 @@ impl Writable for &str {
 
     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         let padded_len = (self.len() + 1) as u16;
-        stream.write_value(&padded_len).await?;
-        // stream.write_value(&(self.len() + 1) as u16).await?;
-        stream.write_value(&RawString(self)).await
+        let mut n = 0;
+        n += stream.write_value(&padded_len).await?;
+        n += stream.write_value(&RawString(self)).await?;
+        Ok(n)
     }
 }
 
@@ -46,13 +47,13 @@ pub struct RawString<'a>(pub &'a str);
 
 impl Writable for RawString<'_> {
     fn size(&self) -> usize {
-        self.0.as_bytes().len() + 1 // null terminator
+        self.0.len() + 1 // null terminator
     }
 
     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
         stream.write_all(self.0.as_bytes()).await?;
         stream.write_all(b"\0").await?;
-        Ok(self.0.as_bytes().len() + 1)
+        Ok(self.0.len() + 1)
     }
 }
 
