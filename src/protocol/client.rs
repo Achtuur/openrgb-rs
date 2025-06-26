@@ -2,7 +2,6 @@ use std::fmt::Debug;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 
-use log::debug;
 use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
@@ -13,7 +12,7 @@ use crate::{OpenRgbError, OpenRgbResult};
 use super::{ProtocolTcpStream, Writable, WritableStream};
 
 /// Default protocol version used by [OpenRGB] client.
-pub static DEFAULT_PROTOCOL: u32 = 4;
+pub static DEFAULT_PROTOCOL: u32 = 5;
 
 /// Default address used by [OpenRGB::connect].
 pub static DEFAULT_ADDR: (Ipv4Addr, u16) = (Ipv4Addr::LOCALHOST, 6742);
@@ -79,7 +78,7 @@ impl OpenRgbProtocol<ProtocolTcpStream> {
     /// # }
     /// ```
     pub async fn connect_to(addr: impl ToSocketAddrs + Debug + Copy) -> OpenRgbResult<Self> {
-        debug!("Connecting to OpenRGB server at {:?}...", addr);
+        tracing::debug!("Connecting to OpenRGB server at {:?}...", addr);
         let stream = ProtocolTcpStream::connect(addr).await.map_err(|source| {
             OpenRgbError::ConnectionError {
                 addr: format!("{:?}", addr),
@@ -106,7 +105,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
             .await?;
         let protocol = DEFAULT_PROTOCOL.min(req_protocol);
 
-        debug!(
+        tracing::debug!(
             "Connected to OpenRGB server using protocol version {:?}",
             protocol
         );
@@ -342,7 +341,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     /// Save a mode.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_savemode) for more information.
-    pub async fn save_mode(&self, controller_id: u32, mode: ModeData) -> OpenRgbResult<()> {
+    pub async fn save_mode(&self, controller_id: u32, mode: &ModeData) -> OpenRgbResult<()> {
         self.check_protocol_version(3, "Save mode")?;
         self.stream
             .lock()

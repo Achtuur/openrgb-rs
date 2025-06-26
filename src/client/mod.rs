@@ -120,7 +120,7 @@ impl OpenRgbClientWrapper {
     }
 
     pub async fn save_mode(&self, controller_id: u32, mode: ModeData) -> OpenRgbResult<()> {
-        self.proto.save_mode(controller_id, mode).await
+        self.proto.save_mode(controller_id, &mode).await
     }
 
     pub async fn update_zone_leds(

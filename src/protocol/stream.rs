@@ -1,6 +1,5 @@
 use std::pin::Pin;
 
-use log::debug;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpStream, ToSocketAddrs};
 
@@ -38,7 +37,7 @@ pub trait ReadableStream: ProtocolStream + AsyncReadExt + Sized + Send + Sync + 
         expected_device_id: u32,
         expected_packet_id: PacketId,
     ) -> OpenRgbResult<usize> {
-        debug!("Reading {:?} packet...", expected_packet_id);
+        tracing::trace!("Reading {:?} packet...", expected_packet_id);
 
         for c in MAGIC {
             if self.read_u8().await? != c {
@@ -107,7 +106,7 @@ pub trait WritableStream: ProtocolStream + AsyncWriteExt + Sized + Send + Sync +
         packet_id: PacketId,
         data_len: usize,
     ) -> OpenRgbResult<()> {
-        debug!("Sending {:?} packet of {} bytes...", packet_id, data_len);
+        tracing::trace!("Sending {:?} packet of {} bytes...", packet_id, data_len);
         self.write_all(&MAGIC).await?;
         self.write_value(&device_id).await?;
         self.write_value(&packet_id).await?;
@@ -131,8 +130,8 @@ pub trait WritableStream: ProtocolStream + AsyncWriteExt + Sized + Send + Sync +
             );
             buf.write_header(device_id, packet_id, size).await?;
             buf.write_value(data).await?;
-            log::trace!("header: {0:?}", &buf[..16]);
-            log::trace!("packet: {0:?}", &buf[16..]);
+            tracing::trace!("header: {0:?}", &buf[..16]);
+            tracing::trace!("packet: {0:?}", &buf[16..]);
             self.write_all(&buf).await?;
         }
 

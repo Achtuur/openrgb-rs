@@ -45,7 +45,7 @@ impl<'a> Zone<'a> {
     ///
     /// If `color` is too short, it will be padded with black.
     /// If `colors` is longer than the number of leds in the zone, it is truncated.
-    pub fn zone_colors_from_iter<I>(&self, colors: I) -> impl IntoIterator<Item = Color> + use<I>
+    pub fn zone_colors_from_iter<I>(&self, colors: I) -> impl Iterator<Item = Color> + use<I>
     where
         I: IntoIterator<Item = Color>,
     {
@@ -55,16 +55,18 @@ impl<'a> Zone<'a> {
     }
 
     pub async fn update_leds(&self, colors: &[Color]) -> OpenRgbResult<()> {
-        if colors.len() != self.data.leds_count as usize {
-            return Err(OpenRgbError::ProtocolError(format!(
-                "Invalid number of colors: expected {}, got {}",
-                self.data.leds_count,
-                colors.len()
-            )));
-        }
+        // if colors.len() != self.data.leds_count as usize {
+        //     return Err(OpenRgbError::ProtocolError(format!(
+        //         "Invalid number of colors: expected {}, got {}",
+        //         self.data.leds_count,
+        //         colors.len()
+        //     )));
+        // }
+        let colors = self.zone_colors_from_iter(colors.iter().copied())
+        .collect::<Vec<_>>();
 
         self.proto
-            .update_zone_leds(self.controller_id(), self.zone_id(), colors)
+            .update_zone_leds(self.controller_id(), self.zone_id(), &colors)
             .await
     }
 

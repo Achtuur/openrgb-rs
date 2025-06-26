@@ -1,10 +1,9 @@
+use flagset::FlagSet;
+
 use crate::{
-    OpenRgbError, OpenRgbResult, ProtocolTcpStream,
-    data::ModeData,
-    protocol::{
-        OpenRgbProtocol,
-        data::{Color, ControllerData},
-    },
+    data::{ModeData, ModeFlag}, protocol::{
+        data::{Color, ControllerData}, OpenRgbProtocol
+    }, OpenRgbError, OpenRgbResult, ProtocolTcpStream
 };
 
 use super::{zone, Zone};
@@ -45,15 +44,29 @@ impl Controller {
     /// Sets this controller to a controllable mode.
     pub async fn set_controllable_mode(&self) -> OpenRgbResult<()> {
         // order: "direct", "custom", "static"
-        let mode = self
+        let mut mode = self
             .get_mode_if_contains("direct")
             .or(self.get_mode_if_contains("custom"))
             .or(self.get_mode_if_contains("static"))
             .ok_or(OpenRgbError::ProtocolError(
                 "No controllable mode found".to_string(),
-            ))?;
+            ))?.clone();
 
-        self.proto.update_mode(self.id, mode).await
+        tracing::debug!(
+            "Setting {} to {} mode",
+            self.name(),
+            mode.name
+        );
+
+        if mode.flags.contains(ModeFlag::HasBrightness) {
+            mode.brightness = Some(100);
+            mode.brightness_min = Some(100);
+            mode.brightness_max = Some(100);
+        }
+
+        // just do both I guess
+        self.proto.update_mode(self.id, &mode).await?;
+        self.proto.save_mode(self.id, &mode).await
     }
 
     pub async fn set_disabled_mode(&self) -> OpenRgbResult<()> {
@@ -72,7 +85,7 @@ impl Controller {
         self.data()
             .modes
             .iter()
-            .find(|m| m.name.to_lowercase().contains(pat))
+            .find(|m| m.name.to_ascii_lowercase().contains(pat))
     }
 
     pub fn get_zone<'a>(&'a self, zone_id: u32) -> OpenRgbResult<Zone<'a>> {
@@ -121,6 +134,13 @@ impl Controller {
     ///
     /// Pads the colors with black if the number of colors is less than the number of LEDs in the zone.
     pub async fn update_multiple_zones(&self, zone_colors: impl IntoIterator<Item = (u32, impl IntoIterator<Item = Color>)>) -> OpenRgbResult<()> {
+        // for (z_id, colors) in zone_colors {
+        //     let zone = self.get_zone(z_id)?;
+        //     let colors: Vec<Color> = zone.zone_colors_from_iter(colors).collect();
+        //     zone.update_leds(&colors).await?;
+        // }
+        // Ok(())
+
         let mut zone_id_iter = 0..self.data().zones.len();
         let colors = zone_colors
         .into_iter()

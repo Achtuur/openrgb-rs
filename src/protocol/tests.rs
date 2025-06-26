@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::sync::Once;
 
-use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
 use tokio_test::io::{Builder, Mock};
 
@@ -28,7 +27,7 @@ static INIT_ONCE: Once = Once::new();
 pub fn setup() -> Result<(), Box<dyn Error>> {
     INIT_ONCE.call_once(|| {
         CombinedLogger::init(vec![TermLogger::new(
-            LevelFilter::Info,
+            log::LevelFilter::Info,
             Config::default(),
             TerminalMode::default(),
             ColorChoice::Auto,
