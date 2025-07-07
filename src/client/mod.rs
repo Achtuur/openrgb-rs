@@ -65,11 +65,6 @@ impl OpenRgbClientWrapper {
         let client = OpenRgbProtocol::connect_to(addr).await?;
         Ok(Self { proto: client })
     }
-
-    pub(crate) async fn connect_clone(&self) -> OpenRgbResult<Self> {
-        let client = self.proto.connect_clone().await?;
-        Ok(Self { proto: client })
-    }
 }
 
 impl OpenRgbClientWrapper {

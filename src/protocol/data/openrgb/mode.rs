@@ -94,16 +94,9 @@ impl TryFromStream for ModeData {
             name,
             value,
             flags,
-            speed_min: if flags.contains(HasSpeed) {
-                Some(speed_min)
-            } else {
-                None
-            },
-            speed_max: if flags.contains(HasSpeed) {
-                Some(speed_max)
-            } else {
-                None
-            },
+            speed_min: flags.contains(HasSpeed).then_some(speed_min),
+            speed_max: flags.contains(HasSpeed).then_some(speed_max),
+            speed: flags.contains(HasSpeed).then_some(speed),
             brightness_min: if flags.contains(HasBrightness) {
                 brightness_min
             } else {
@@ -111,6 +104,11 @@ impl TryFromStream for ModeData {
             },
             brightness_max: if flags.contains(HasBrightness) {
                 brightness_max
+            } else {
+                None
+            },
+            brightness: if flags.contains(HasBrightness) {
+                brightness
             } else {
                 None
             },
@@ -123,16 +121,6 @@ impl TryFromStream for ModeData {
                 None
             } else {
                 Some(colors_max)
-            },
-            speed: if flags.contains(HasSpeed) {
-                Some(speed)
-            } else {
-                None
-            },
-            brightness: if flags.contains(HasBrightness) {
-                brightness
-            } else {
-                None
             },
             direction: if flags.contains(HasDirection) {
                 Some(

@@ -35,7 +35,7 @@ impl TryFromStream for String {
     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let mut buf = vec![Default::default(); stream.read_value::<u16>().await? as usize];
         stream.read_exact(&mut buf).await?;
-        buf.pop();
+        buf.pop(); // null byte?
         String::from_utf8(buf).map_err(|e| {
             OpenRgbError::ProtocolError(format!("Failed decoding string as UTF-8: {}", e))
         })
