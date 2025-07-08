@@ -1,3 +1,4 @@
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 
@@ -21,6 +22,30 @@ impl<T: TryFromStream> TryFromStream for Vec<T> {
             vec.push(stream.read_value().await?);
         }
         Ok(vec)
+    }
+}
+
+
+impl<T: DeserFromBuf> DeserFromBuf for Vec<T> {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self>
+    where
+        Self: Sized {
+        let len = buf.read_u16()? as usize;
+        let mut vec = Vec::with_capacity(len);
+        for _ in 0..len {
+            vec.push(T::deserialize(buf)?);
+        }
+        Ok(vec)
+    }
+}
+
+impl<T: SerToBuf> SerToBuf for Vec<T> {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u16(self.len() as u16);
+        for t in self {
+            buf.write_value(t)?;
+        }
+        Ok(())
     }
 }
 

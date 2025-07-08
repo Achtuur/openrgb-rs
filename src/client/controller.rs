@@ -59,9 +59,9 @@ impl Controller {
         );
 
         if mode.flags.contains(ModeFlag::HasBrightness) {
-            mode.brightness = Some(100);
-            mode.brightness_min = Some(100);
-            mode.brightness_max = Some(100);
+            mode.brightness.replace(100);
+            mode.brightness_min.replace(100);
+            mode.brightness_max.replace(100);
         }
 
         // just do both I guess

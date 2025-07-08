@@ -6,6 +6,7 @@ mod packet;
 mod stream;
 #[cfg(test)]
 mod tests;
+mod stream2;
 
 pub(crate) use {client::*, packet::*, stream::*};
 

@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 
@@ -6,6 +7,7 @@ use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
 use super::data::{Color, ControllerData, ModeData, RawString, SegmentData};
+use crate::protocol::stream2::{OpenRgbPacket, Stream2};
 use crate::protocol::{OpenRgbStream, PacketId};
 use crate::{OpenRgbError, OpenRgbResult};
 
@@ -24,7 +26,9 @@ pub(crate) const MAGIC: [u8; 4] = *b"ORGB";
 /// This struct makes sure the protocol_id and the stream are in sync.
 pub struct OpenRgbProtocol<S: OpenRgbStream> {
     protocol_id: u32,
-    stream: Arc<Mutex<S>>,
+    // stream: Arc<Mutex<S>>,
+    stream: Arc<Mutex<Stream2>>,
+    _marker: PhantomData<S>,
 }
 
 impl<S: OpenRgbStream> Clone for OpenRgbProtocol<S> {
@@ -32,6 +36,7 @@ impl<S: OpenRgbStream> Clone for OpenRgbProtocol<S> {
         Self {
             protocol_id: self.protocol_id,
             stream: self.stream.clone(),
+            _marker: PhantomData,
         }
     }
 }
@@ -79,7 +84,7 @@ impl OpenRgbProtocol<ProtocolTcpStream> {
     /// ```
     pub async fn connect_to(addr: impl ToSocketAddrs + Debug + Copy) -> OpenRgbResult<Self> {
         tracing::debug!("Connecting to OpenRGB server at {:?}...", addr);
-        let stream = ProtocolTcpStream::connect(addr).await.map_err(|source| {
+        let stream = Stream2::connect(addr).await.map_err(|source| {
             OpenRgbError::ConnectionError {
                 addr: format!("{:?}", addr),
                 source,
@@ -99,7 +104,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     /// Build a new client from given stream.
     ///
     /// This constructor expects a connected, ready to use stream.
-    pub async fn new(mut stream: S) -> OpenRgbResult<Self> {
+    pub async fn new(mut stream: Stream2) -> OpenRgbResult<Self> {
         let req_protocol = stream
             .request(0, PacketId::RequestProtocolVersion, &DEFAULT_PROTOCOL)
             .await?;
@@ -114,6 +119,7 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
         Ok(Self {
             protocol_id: protocol,
             stream: Arc::new(Mutex::new(stream)),
+            _marker: PhantomData,
         })
     }
 
@@ -206,16 +212,14 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_updateleds) for more information.
     pub async fn update_leds(&self, controller_id: u32, colors: &[Color]) -> OpenRgbResult<()> {
-        // todo: optimise this maybe so that we don't allocate a Vec
-        // this would mean that we write the data byte last
-        let size = colors.size() + size_of::<u32>(); // count the data_size field too
+        let packet = OpenRgbPacket::new(colors);
         self.stream
             .lock()
             .await
             .write_packet(
                 controller_id,
                 PacketId::RGBControllerUpdateLeds,
-                &(size, colors),
+                &packet,
             )
             .await
     }
@@ -229,15 +233,14 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
         zone_id: u32,
         colors: &[Color],
     ) -> OpenRgbResult<()> {
-        // size of data packet needs to count the data_size field too
-        let data_size = size_of::<u32>() + zone_id.size() + colors.size();
+        let packet = OpenRgbPacket::new((zone_id, colors));
         self.stream
             .lock()
             .await
             .write_packet(
                 controller_id,
                 PacketId::RGBControllerUpdateZoneLeds,
-                &(data_size, zone_id, colors),
+                &packet,
             )
             .await
     }
@@ -249,14 +252,14 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
         segment: &SegmentData,
     ) -> OpenRgbResult<()> {
         self.check_protocol_version(5, "Add Segment")?;
-        let data_size = size_of::<u32>() + zone_id.size() + segment.size();
+        let packet = OpenRgbPacket::new((zone_id, segment));
         self.stream
             .lock()
             .await
             .write_packet(
                 controller_id,
                 PacketId::RGBControllerAddSegment,
-                &(data_size, zone_id, segment),
+                &packet,
             )
             .await
     }
@@ -325,15 +328,14 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_updatemode) for more information.
     pub async fn update_mode(&self, controller_id: u32, mode: &ModeData) -> OpenRgbResult<()> {
-        // count the data_size field too
-        let size = size_of::<u32>() + mode.index.size() + mode.size();
+        let packet = OpenRgbPacket::new((mode.index, mode));
         self.stream
             .lock()
             .await
             .write_packet(
                 controller_id,
                 PacketId::RGBControllerUpdateMode,
-                &(size, mode.index, mode),
+                &packet,
             )
             .await
     }
@@ -343,10 +345,11 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_rgbcontroller_savemode) for more information.
     pub async fn save_mode(&self, controller_id: u32, mode: &ModeData) -> OpenRgbResult<()> {
         self.check_protocol_version(3, "Save mode")?;
+        let packet = OpenRgbPacket::new((mode.index, mode));
         self.stream
             .lock()
             .await
-            .write_packet(controller_id, PacketId::RGBControllerSaveMode, &mode)
+            .write_packet(controller_id, PacketId::RGBControllerSaveMode, &packet)
             .await
     }
 
@@ -367,8 +370,9 @@ mod tests {
     use std::error::Error;
 
     use tokio_test::io::Builder;
+    use tracing_test::traced_test;
 
-    use crate::protocol::tests::{OpenRGBMockBuilder, setup};
+    use crate::{protocol::tests::{setup, OpenRGBMockBuilder}, Color, OpenRgbProtocol, OpenRgbResult};
 
     #[tokio::test]
     async fn test_negotiate_protocol_version_3() -> Result<(), Box<dyn Error>> {
@@ -578,5 +582,32 @@ mod tests {
             .await?;
 
         todo!("test not implemented")
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    #[ignore = "can only test with openrgb running"]
+    async fn test_connect_real() -> OpenRgbResult<()> {
+        let client = OpenRgbProtocol::connect().await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    #[ignore = "can only test with openrgb running"]
+    async fn test_update_led_real() -> OpenRgbResult<()> {
+        let client = OpenRgbProtocol::connect().await?;
+        client.update_led(4, 0, &Color::new(255, 0, 0)).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    #[ignore = "can only test with openrgb running"]
+    async fn test_update_leds_real() -> OpenRgbResult<()> {
+        let client = OpenRgbProtocol::connect().await?;
+        client.update_leds(0, &[Color::new(255, 0, 0); 2]).await?;
+        // client.update_led(4, 0, &Color::new(255, 0, 0)).await?;
+        Ok(())
     }
 }

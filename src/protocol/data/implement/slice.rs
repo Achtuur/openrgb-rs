@@ -1,4 +1,4 @@
-use crate::{protocol::Writable, WritableStream};
+use crate::{protocol::{stream2::{SerToBuf, WriteMessage}, Writable}, WritableStream};
 
 impl<T: Writable> Writable for &[T] {
     fn size(&self) -> usize {
@@ -14,5 +14,18 @@ impl<T: Writable> Writable for &[T] {
             n += stream.write_value(elem).await?;
         }
         Ok(n)
+    }
+}
+
+impl<T: SerToBuf> SerToBuf for &[T] {
+    fn serialize(&self, buf: &mut WriteMessage) -> crate::OpenRgbResult<()> {
+        let len = u16::try_from(self.len()).map_err(|e| {
+            crate::OpenRgbError::ProtocolError(format!("Slice is too large to encode: {}", e))
+        })?;
+        buf.write_u16(len);
+        for item in self.iter() {
+            item.serialize(buf)?;
+        }
+        Ok(())
     }
 }

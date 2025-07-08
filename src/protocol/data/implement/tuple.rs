@@ -1,6 +1,6 @@
+use crate::protocol::stream2::{DeserFromBuf, SerToBuf, ReceivedMessage, WriteMessage};
 use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
-
 
 macro_rules! impl_tuple {
     ($($idx:tt $t:tt),+) => {
@@ -25,6 +25,25 @@ macro_rules! impl_tuple {
                         stream.read_value::<$t>().await?,
                     )+
                 ))
+            }
+        }
+
+        impl<$($t: DeserFromBuf),+> DeserFromBuf for ($($t,)+) {
+            fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+                Ok((
+                    $(
+                        $t::deserialize(buf)?,
+                    )+
+                ))
+            }
+        }
+
+        impl<$($t: SerToBuf),+> SerToBuf for ($($t,)+) {
+            fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+                $(
+                    self.$idx.serialize(buf)?;
+                )+
+                Ok(())
             }
         }
     }

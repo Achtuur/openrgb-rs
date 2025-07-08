@@ -2,6 +2,7 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
 
@@ -35,9 +36,27 @@ impl Writable for ColorMode {
     }
 }
 
+impl SerToBuf for ColorMode {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        let num = *self as u32;
+        buf.write_u32(num);
+        Ok(())
+    }
+}
+
 impl TryFromStream for ColorMode {
     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let raw = stream.read_value().await?;
+        ColorMode::from_u32(raw).ok_or(OpenRgbError::ProtocolError(format!(
+            "unknown color mode \"{}\"",
+            raw
+        )))
+    }
+}
+
+impl DeserFromBuf for ColorMode {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let raw = buf.read_u32()?;
         ColorMode::from_u32(raw).ok_or(OpenRgbError::ProtocolError(format!(
             "unknown color mode \"{}\"",
             raw

@@ -2,6 +2,7 @@ use std::mem::size_of;
 
 use rgb::RGB8;
 
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 
@@ -34,6 +35,25 @@ impl Writable for Color {
     }
 }
 
+impl DeserFromBuf for Color {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let r = buf.read_u8()?;
+        let g = buf.read_u8()?;
+        let b = buf.read_u8()?;
+        let _ = buf.read_u8()?; // Skip the alpha channel
+        Ok(Color { r, g, b })
+    }
+}
+
+impl SerToBuf for Color {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u8(self.r);
+        buf.write_u8(self.g);
+        buf.write_u8(self.b);
+        buf.write_u8(0u8); // Skip the alpha channel
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {

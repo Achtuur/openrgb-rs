@@ -46,7 +46,8 @@ pub trait OpenRGBMockBuilder<S: OpenRgbStream> {
 
 impl OpenRGBMockBuilder<Mock> for Builder {
     async fn to_client(&mut self) -> OpenRgbResult<OpenRgbProtocol<Mock>> {
-        OpenRgbProtocol::new(self.build()).await
+        todo!()
+        // OpenRgbProtocol::new(self.build()).await
     }
 
     fn negotiate_default_protocol(&mut self) -> &mut Self {

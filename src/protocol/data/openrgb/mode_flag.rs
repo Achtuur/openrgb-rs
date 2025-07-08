@@ -2,6 +2,7 @@ use std::mem::size_of;
 
 use flagset::{FlagSet, flags};
 
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::protocol::{TryFromStream, Writable};
 use crate::{OpenRgbError, OpenRgbResult};
@@ -65,6 +66,25 @@ impl TryFromStream for FlagSet<ModeFlag> {
                 value, e
             ))
         })
+    }
+}
+
+impl DeserFromBuf for FlagSet<ModeFlag> {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let value = buf.read_u32()?;
+        FlagSet::<ModeFlag>::new(value).map_err(|e| {
+            OpenRgbError::ProtocolError(format!(
+                "Received invalid mode flag set: {} ({})",
+                value, e
+            ))
+        })
+    }
+}
+
+impl SerToBuf for FlagSet<ModeFlag> {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u32(self.bits());
+        Ok(())
     }
 }
 

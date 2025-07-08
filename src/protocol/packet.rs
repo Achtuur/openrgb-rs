@@ -2,6 +2,7 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::OpenRgbError::ProtocolError;
 use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, WritableStream};
@@ -85,6 +86,22 @@ impl TryFromStream for PacketId {
             PacketId::from_u32(id)
                 .ok_or_else(|| ProtocolError(format!("unknown packed ID \"{}\"", id)))
         })
+    }
+}
+
+impl DeserFromBuf for PacketId {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let packet_id_raw = buf.read_u32()?;
+        PacketId::from_u32(packet_id_raw)
+            .ok_or_else(|| ProtocolError(format!("unknown packet ID \"{}\"", packet_id_raw)))
+    }
+}
+
+impl SerToBuf for PacketId {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        let num = *self as u32;
+        buf.write_u32(num);
+        Ok(())
     }
 }
 

@@ -1,8 +1,10 @@
 use array2d::Array2D;
 
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage};
 use crate::OpenRgbResult;
 use crate::protocol::data::ZoneType;
 use crate::protocol::{ReadableStream, TryFromStream};
+use crate::protocol::data::ProtocolOption;
 
 use super::SegmentData;
 
@@ -34,12 +36,12 @@ pub struct ZoneData {
     /// Segments in this zone
     ///
     /// Minimum version: 4
-    pub segments: Vec<SegmentData>,
+    pub segments: ProtocolOption<4, Vec<SegmentData>>,
 
     /// Flags for this zone.
     ///
     /// Minimum version: 5
-    pub flags: Option<u32>,
+    pub flags: ProtocolOption<5, u32>,
 
     /// Zone LED matrix (if [Zone::type] is [ZoneType::Matrix]).
     ///
@@ -72,10 +74,45 @@ impl TryFromStream for ZoneData {
             }),
         };
 
-        let segments = stream.read_value_min_version(4).await?.unwrap_or_default();
-        let flags = stream.read_value_min_version(5).await?;
+        let segments = stream.read_value().await?;
+        let flags = stream.read_value().await?;
 
         Ok(ZoneData {
+            id: u32::MAX,
+            name,
+            zone_type,
+            leds_min,
+            leds_max,
+            leds_count,
+            matrix,
+            segments,
+            flags,
+        })
+    }
+}
+
+impl DeserFromBuf for ZoneData {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let name = buf.read_value()?;
+        let zone_type = buf.read_value()?;
+        let leds_min = buf.read_value()?;
+        let leds_max = buf.read_value()?;
+        let leds_count = buf.read_value()?;
+        let matrix_len = buf.read_u16()? as usize;
+        let matrix = match matrix_len {
+            0 => None,
+            _ => Some({
+                let matrix_height = buf.read_value::<u32>()? as usize;
+                let matrix_width = buf.read_value::<u32>()? as usize;
+                let matrix_size = matrix_height * matrix_width;
+                let matrix_data = buf.read_n_values::<u32>(matrix_size)?;
+                Array2D::from_row_major(&matrix_data, matrix_height, matrix_width).unwrap()
+            }),
+        };
+
+        let segments = buf.read_value()?;
+        let flags = buf.read_value()?;
+        Ok(Self {
             id: u32::MAX,
             name,
             zone_type,
@@ -96,6 +133,7 @@ mod tests {
     use array2d::Array2D;
     use tokio_test::io::Builder;
 
+    use crate::data::ProtocolOption;
     use crate::protocol::ReadableStream;
     use crate::protocol::data::{ZoneData, ZoneType};
     use crate::protocol::tests::setup;
@@ -123,8 +161,8 @@ mod tests {
                 leds_max: 18,
                 leds_count: 15,
                 matrix: None,
-                segments: vec![],
-                flags: None,
+                segments: ProtocolOption::Some(vec![]),
+                flags: ProtocolOption::Some(0),
                 id: u32::MAX,
             }
         );
@@ -163,8 +201,8 @@ mod tests {
                 leds_max: 18,
                 leds_count: 15,
                 matrix: Some(Array2D::from_rows(&[vec![0, 1, 2], vec![3, 4, 5]]).unwrap()),
-                segments: vec![],
-                flags: None,
+                segments: ProtocolOption::Some(vec![]),
+                flags: ProtocolOption::Some(0),
                 id: u32::MAX,
             }
         );

@@ -2,6 +2,7 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::protocol::{TryFromStream, Writable};
 use crate::{OpenRgbError, OpenRgbResult};
@@ -46,6 +47,22 @@ impl TryFromStream for Direction {
             Direction::from_u32(id)
                 .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown direction \"{}\"", id)))
         })
+    }
+}
+
+impl DeserFromBuf for Direction {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let direction_raw = buf.read_u32()?;
+        Direction::from_u32(direction_raw)
+            .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown direction \"{}\"", direction_raw)))
+    }
+}
+
+impl SerToBuf for Direction {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        let num = *self as u32;
+        buf.write_u32(num);
+        Ok(())
     }
 }
 

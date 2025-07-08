@@ -1,9 +1,10 @@
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage};
 use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, TryFromStream};
 
 /// A single LED.
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct LED {
+pub struct Led {
     /// LED name.
     pub name: String,
 
@@ -13,11 +14,22 @@ pub struct LED {
     pub value: u32,
 }
 
-impl TryFromStream for LED {
+impl TryFromStream for Led {
     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
         let name = stream.read_value().await?;
         let value = stream.read_value().await?;
-        Ok(LED { name, value })
+        Ok(Led { name, value })
+    }
+}
+
+impl DeserFromBuf for Led {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self>
+    where
+        Self: Sized {
+        Ok(Led {
+            name: buf.read_value()?,
+            value: buf.read_value()?,
+        })
     }
 }
 
@@ -28,7 +40,7 @@ mod tests {
     use tokio_test::io::Builder;
 
     use crate::protocol::ReadableStream;
-    use crate::protocol::data::LED;
+    use crate::protocol::data::Led;
     use crate::protocol::tests::setup;
 
     #[tokio::test]
@@ -42,8 +54,8 @@ mod tests {
             .build();
 
         assert_eq!(
-            stream.read_value::<LED>().await?,
-            LED {
+            stream.read_value::<Led>().await?,
+            Led {
                 name: "test".to_string(),
                 value: 45
             }

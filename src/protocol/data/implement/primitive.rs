@@ -1,7 +1,74 @@
 use std::mem::size_of;
 
+use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
 use crate::{OpenRgbError, OpenRgbResult};
+
+
+impl DeserFromBuf for () {
+    fn deserialize(_buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        Ok(())
+    }
+}
+
+impl SerToBuf for () {
+    fn serialize(&self, _buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        Ok(())
+    }
+}
+
+impl DeserFromBuf for u8 {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        buf.read_u8()
+    }
+}
+
+impl SerToBuf for u8 {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u8(*self);
+        Ok(())
+    }
+}
+
+impl DeserFromBuf for u16 {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        buf.read_u16()
+    }
+}
+
+impl SerToBuf for u16 {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u16(*self);
+        Ok(())
+    }
+}
+
+impl DeserFromBuf for u32 {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        buf.read_u32()
+    }
+}
+
+impl SerToBuf for u32 {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u32(*self);
+        Ok(())
+    }
+}
+
+impl DeserFromBuf for i32 {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let x = buf.read_u32()?;
+        Ok(x as i32)
+    }
+}
+
+impl SerToBuf for i32 {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u32(*self as u32);
+        Ok(())
+    }
+}
 
 impl Writable for () {
     fn size(&self) -> usize {

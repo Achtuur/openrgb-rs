@@ -2,6 +2,7 @@ use std::mem::size_of;
 
 use num_traits::FromPrimitive;
 
+use crate::protocol::stream2::{DeserFromBuf, SerToBuf};
 use crate::OpenRgbResult;
 use crate::protocol::{ReadableStream, WritableStream};
 use crate::protocol::{TryFromStream, Writable};
@@ -73,6 +74,22 @@ impl TryFromStream for DeviceType {
         let device_type_raw = stream.read_value().await?;
         let device_type = DeviceType::from_u32(device_type_raw).unwrap_or(DeviceType::Unknown);
         Ok(device_type)
+    }
+}
+
+impl DeserFromBuf for DeviceType {
+    fn deserialize(buf: &mut crate::protocol::stream2::ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let device_type_raw = buf.read_u32()?;
+        let device_type = DeviceType::from_u32(device_type_raw).unwrap_or(DeviceType::Unknown);
+        Ok(device_type)
+    }
+}
+
+impl SerToBuf for DeviceType {
+    fn serialize(&self, buf: &mut crate::protocol::stream2::WriteMessage) -> OpenRgbResult<()> {
+        let num = *self as u32;
+        buf.write_u32(num);
+        Ok(())
     }
 }
 
