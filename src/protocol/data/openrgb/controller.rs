@@ -1,8 +1,7 @@
 use crate::data::ProtocolOption;
-use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage};
+use crate::protocol::{DeserFromBuf, ReceivedMessage};
 use crate::OpenRgbResult;
 use crate::protocol::data::{Color, DeviceType, Led, ModeData, ZoneData};
-use crate::protocol::{ReadableStream, TryFromStream};
 
 /// RGB controller.
 ///
@@ -58,55 +57,6 @@ pub struct ControllerData {
     /// not in protocol, but given by the request used to get this controller
     pub id: u32,
 }
-
-// impl TryFromStream for ControllerData {
-//     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-//         let _data_size = stream.read_value::<u32>().await?;
-//         let device_type = stream.read_value().await?;
-//         let name = stream.read_value().await?;
-//         let vendor = stream.read_value().await?;
-//         let description = stream.read_value().await?;
-//         let version = stream.read_value().await?;
-//         let serial = stream.read_value().await?;
-//         let location = stream.read_value().await?;
-//         let num_modes = stream.read_value::<u16>().await?;
-//         let active_mode = stream.read_value().await?;
-//         let mut modes = Vec::with_capacity(num_modes as usize);
-//         for idx in 0..num_modes {
-//             let mut mode: ModeData = stream.read_value().await?;
-//             mode.index = idx as u32;
-//             modes.push(mode);
-//         }
-
-//         let mut zones: Vec<ZoneData> = stream.read_value().await?;
-//         for (idx, zone) in zones.iter_mut().enumerate() {
-//             zone.id = idx as u32;
-//         }
-
-//         let leds = stream.read_value().await?;
-//         let colors = stream.read_value().await?;
-//         let led_alt_names = stream.read_value().await?;
-//         let flags = stream.read_value().await?;
-
-//         Ok(ControllerData {
-//             device_type,
-//             name,
-//             vendor,
-//             description,
-//             version,
-//             serial,
-//             location,
-//             active_mode,
-//             modes,
-//             zones,
-//             leds,
-//             colors,
-//             led_alt_names,
-//             flags,
-//             id: u32::MAX,
-//         })
-//     }
-// }
 
 impl DeserFromBuf for ControllerData {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {

@@ -3,19 +3,19 @@ use flagset::FlagSet;
 use crate::{
     data::{ModeData, ModeFlag}, protocol::{
         data::{Color, ControllerData}, OpenRgbProtocol
-    }, OpenRgbError, OpenRgbResult, ProtocolTcpStream
+    }, OpenRgbError, OpenRgbResult
 };
 
 use super::{zone, Zone};
 
 pub struct Controller {
     id: u32,
-    proto: OpenRgbProtocol<ProtocolTcpStream>,
+    proto: OpenRgbProtocol,
     data: ControllerData,
 }
 
 impl Controller {
-    pub fn new(id: u32, proto: OpenRgbProtocol<ProtocolTcpStream>, data: ControllerData) -> Self {
+    pub fn new(id: u32, proto: OpenRgbProtocol, data: ControllerData) -> Self {
         Self { id, proto, data }
     }
 

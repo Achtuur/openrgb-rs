@@ -1,4 +1,4 @@
-use crate::{protocol::stream2::{DeserFromBuf, ReceivedMessage, WriteMessage}, TryFromStream, Writable};
+use crate::{protocol::serialize::{DeserFromBuf, ReceivedMessage}, SerToBuf, WriteMessage};
 
 /// Option that can be used to represent values not supported by the current protocol version.
 ///
@@ -54,36 +54,6 @@ impl<const VER: usize, T> ProtocolOption<VER, T> {
     }
 }
 
-impl<const VER: usize, T> TryFromStream for ProtocolOption<VER, T>
-where T: TryFromStream
-{
-    async fn try_read(stream: &mut impl crate::ReadableStream) -> crate::OpenRgbResult<Self> {
-        if stream.protocol_version() < VER as u32 {
-            return Ok(ProtocolOption::UnsupportedVersion);
-        }
-        let val = stream.read_value::<T>().await?;
-        Ok(ProtocolOption::Some(val))
-    }
-}
-
-impl<const VER: usize, T> Writable for ProtocolOption<VER, T>
-where T: Writable
-{
-    fn size(&self) -> usize {
-        match self {
-            Self::Some(v) => v.size(),
-            Self::UnsupportedVersion => 0, // No size if unsupported
-        }
-    }
-
-    async fn try_write(&self, stream: &mut impl crate::WritableStream) -> crate::OpenRgbResult<usize> {
-        match self {
-            Self::Some(v) => v.try_write(stream).await,
-            Self::UnsupportedVersion => Ok(0), // No write if unsupported
-        }
-    }
-}
-
 impl<const VER: usize, T> DeserFromBuf for ProtocolOption<VER, T>
 where T: DeserFromBuf
 {
@@ -96,8 +66,8 @@ where T: DeserFromBuf
     }
 }
 
-impl<const VER: usize, T> crate::protocol::stream2::SerToBuf for ProtocolOption<VER, T>
-where T: crate::protocol::stream2::SerToBuf
+impl<const VER: usize, T> SerToBuf for ProtocolOption<VER, T>
+where T: SerToBuf
 {
     fn serialize(&self, buf: &mut WriteMessage) -> crate::OpenRgbResult<()> {
         if buf.protocol_version() < VER as u32 {

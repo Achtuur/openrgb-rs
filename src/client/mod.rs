@@ -8,14 +8,13 @@ pub use {controller::*, zone::*};
 use tokio::net::ToSocketAddrs;
 
 use crate::{
-    Color, ProtocolTcpStream,
+    Color,
     error::OpenRgbResult,
     protocol::{DEFAULT_ADDR, OpenRgbProtocol, data::ModeData},
 };
 
 pub struct OpenRgbClientWrapper {
-    // todo: make this not public
-    pub proto: OpenRgbProtocol<ProtocolTcpStream>,
+    proto: OpenRgbProtocol,
 }
 
 impl OpenRgbClientWrapper {

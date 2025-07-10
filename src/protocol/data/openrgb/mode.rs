@@ -1,17 +1,14 @@
 use flagset::FlagSet;
-use num_traits::FromPrimitive;
 
 use crate::data::ProtocolOption;
-use crate::protocol::stream2::{DeserFromBuf, SerToBuf, WriteMessage};
+use crate::protocol::{DeserFromBuf, SerToBuf, WriteMessage};
 use crate::OpenRgbError::ProtocolError;
-use crate::protocol::{ReadableStream, WritableStream};
 use crate::{
     OpenRgbResult,
     protocol::data::{
         Color, ColorMode, Direction,
-        ModeFlag::{self, *},
+        ModeFlag::{self},
     },
-    protocol::{TryFromStream, Writable},
 };
 
 /// RGB controller mode.
@@ -140,113 +137,8 @@ impl ModeData {
     }
 }
 
-// impl TryFromStream for ModeData {
-//     async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-//         let name = stream.read_value().await?;
-//         let value = stream.read_value().await?;
-//         let flags = stream.read_value().await?;
-//         let speed_min = stream.read_value().await?;
-//         let speed_max = stream.read_value().await?;
-//         let brightness_min = stream.read_value().await?;
-//         let brightness_max = stream.read_value().await?;
-//         let brightness = stream.read_value().await?;
-//         let colors_min = stream.read_value().await?;
-//         let colors_max = stream.read_value().await?;
-//         let speed = stream.read_value().await?;
-//         let direction = stream.read_value::<Direction>().await?;
-//         let color_mode = stream.read_value().await?;
-//         let colors = stream.read_value::<Vec<Color>>().await?;
-
-//         Ok(ModeData {
-//             index: u32::MAX,
-//             protocol_version: stream.protocol_version(),
-//             name,
-//             value,
-//             flags,
-//             speed_min,
-//             speed_max,
-//             speed,
-//             brightness_min,
-//             brightness_max,
-//             brightness,
-//             colors_min: if colors.is_empty() {
-//                 None
-//             } else {
-//                 Some(colors_min)
-//             },
-//             colors_max: if colors.is_empty() {
-//                 None
-//             } else {
-//                 Some(colors_max)
-//             },
-//             direction,
-//             color_mode,
-//             colors,
-//         })
-//     }
-// }
-
-// impl Writable for ModeData {
-//     fn size(&self) -> usize {
-//         let mut size = 0;
-//         size += self.name.size();
-//         size += self.value.size();
-//         size += self.flags.size();
-//         size += self.speed_min.size();
-//         size += self.speed_max.size();
-//         size += self.brightness_min.size();
-//         size += self.brightness_max.size();
-//         size += self.brightness.size();
-//         size += self.speed.size();
-
-//         size += self.colors_min.unwrap_or_default().size();
-//         size += self.colors_max.unwrap_or_default().size();
-//         size += self.direction.unwrap_or_default().size();
-//         size += self.color_mode.unwrap_or_default().size();
-//         size += self.colors.size();
-//         size
-//     }
-
-//     async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
-//         let mut n = 0;
-//         n += stream.write_value(&self.name).await?;
-//         n += stream.write_value(&self.value).await?;
-//         n += stream.write_value(&self.flags).await?;
-//         n += stream
-//             .write_value(&self.speed_min)
-//             .await?;
-//         n += stream
-//             .write_value(&self.speed_max)
-//             .await?;
-//         n += stream
-//             .write_value(&self.brightness_min)
-//             .await?;
-//         n += stream
-//             .write_value(&self.brightness_max)
-//             .await?;
-//         n += stream
-//             .write_value(&self.brightness)
-//             .await?;
-//         n += stream
-//             .write_value(&self.colors_min.unwrap_or_default())
-//             .await?;
-//         n += stream
-//             .write_value(&self.colors_max.unwrap_or_default())
-//             .await?;
-//         n += stream.write_value(&self.speed).await?;
-//         n += stream
-//             .write_value(&self.direction.unwrap_or_default())
-//             .await?;
-//         n += stream
-//             .write_value(&self.color_mode.unwrap_or_default())
-//             .await?;
-//         n += stream.write_value(&self.colors).await?;
-//         Ok(n)
-//     }
-// }
-
 impl DeserFromBuf for ModeData {
-    fn deserialize(buf: &mut crate::protocol::stream2::ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+    fn deserialize(buf: &mut crate::protocol::serialize::ReceivedMessage<'_>) -> OpenRgbResult<Self> {
         let name = buf.read_value()?;
         let value = buf.read_value()?;
         let flags = buf.read_value()?;

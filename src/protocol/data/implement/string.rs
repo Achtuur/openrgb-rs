@@ -1,48 +1,8 @@
 use std::io::Read;
 use std::mem::size_of;
 
-use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
-use crate::protocol::{ReadableStream, TryFromStream, Writable, WritableStream};
+use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::{OpenRgbError, OpenRgbResult};
-
-impl Writable for &str {
-    fn size(&self) -> usize {
-        size_of::<u16>() // string is preceded by its length
-        + self.len()
-        + 1 // null terminator
-    }
-
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
-        let padded_len = (self.len() + 1) as u16;
-        let mut n = 0;
-        n += stream.write_value(&padded_len).await?;
-        n += stream.write_value(&RawString(self)).await?;
-        Ok(n)
-    }
-}
-
-// FIXME buggy for non ASCII strings
-
-impl Writable for String {
-    fn size(&self) -> usize {
-        self.as_str().size()
-    }
-
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
-        self.as_str().try_write(stream).await
-    }
-}
-
-impl TryFromStream for String {
-    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-        let mut buf = vec![Default::default(); stream.read_value::<u16>().await? as usize];
-        stream.read_exact(&mut buf).await?;
-        buf.pop(); // null byte?
-        String::from_utf8(buf).map_err(|e| {
-            OpenRgbError::ProtocolError(format!("Failed decoding string as UTF-8: {}", e))
-        })
-    }
-}
 
 impl DeserFromBuf for String {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self>
@@ -57,7 +17,6 @@ impl DeserFromBuf for String {
         })
     }
 }
-
 
 impl SerToBuf for String {
     fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
@@ -82,71 +41,57 @@ pub struct RawString<'a>(pub &'a str);
 
 impl SerToBuf for RawString<'_> {
     fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
-        buf.extend_from_slice(self.0.as_bytes());
+        buf.write_slice(self.0.as_bytes());
         buf.write_u8(b'\0');
         Ok(())
     }
 }
 
+// #[cfg(test)]
+// mod tests {
+//     use std::error::Error;
 
-impl Writable for RawString<'_> {
-    fn size(&self) -> usize {
-        self.0.len() + 1 // null terminator
-    }
+//     use tokio_test::io::Builder;
 
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
-        stream.write_all(self.0.as_bytes()).await?;
-        stream.write_all(b"\0").await?;
-        Ok(self.0.len() + 1)
-    }
-}
+//     use crate::protocol::data::implement::string::RawString;
+//     use crate::protocol::tests::setup;
 
-#[cfg(test)]
-mod tests {
-    use std::error::Error;
+//     #[tokio::test]
+//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
+//         setup()?;
 
-    use tokio_test::io::Builder;
+//         let mut stream = Builder::new()
+//             .read(&5_u16.to_le_bytes())
+//             .read(b"test\0")
+//             .build();
 
-    use crate::protocol::data::implement::string::RawString;
-    use crate::protocol::tests::setup;
-    use crate::protocol::{ReadableStream, WritableStream};
+//         assert_eq!(stream.read_value::<String>().await?, "test".to_string());
 
-    #[tokio::test]
-    async fn test_read_001() -> Result<(), Box<dyn Error>> {
-        setup()?;
+//         Ok(())
+//     }
 
-        let mut stream = Builder::new()
-            .read(&5_u16.to_le_bytes())
-            .read(b"test\0")
-            .build();
+//     #[tokio::test]
+//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
+//         setup()?;
 
-        assert_eq!(stream.read_value::<String>().await?, "test".to_string());
+//         let mut stream = Builder::new()
+//             .write(&5_u16.to_le_bytes())
+//             .write(b"test\0")
+//             .build();
 
-        Ok(())
-    }
+//         stream.write_value(&"test").await?;
 
-    #[tokio::test]
-    async fn test_write_001() -> Result<(), Box<dyn Error>> {
-        setup()?;
+//         Ok(())
+//     }
 
-        let mut stream = Builder::new()
-            .write(&5_u16.to_le_bytes())
-            .write(b"test\0")
-            .build();
+//     #[tokio::test]
+//     async fn test_write_raw_001() -> Result<(), Box<dyn Error>> {
+//         setup()?;
 
-        stream.write_value(&"test").await?;
+//         let mut stream = Builder::new().write(b"test\0").build();
 
-        Ok(())
-    }
+//         stream.write_value(&RawString("test")).await?;
 
-    #[tokio::test]
-    async fn test_write_raw_001() -> Result<(), Box<dyn Error>> {
-        setup()?;
-
-        let mut stream = Builder::new().write(b"test\0").build();
-
-        stream.write_value(&RawString("test")).await?;
-
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }

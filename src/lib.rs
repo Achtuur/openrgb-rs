@@ -23,10 +23,6 @@
 #![warn(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 
-#[macro_use]
-extern crate enum_primitive_derive;
-extern crate num_traits;
-
 #[doc(inline)]
 pub use {
     client::*,
@@ -36,4 +32,4 @@ pub use {
 
 mod client;
 mod error;
-mod protocol;
+pub(crate) mod protocol;

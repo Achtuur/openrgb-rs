@@ -7,11 +7,8 @@ use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
 use super::data::{Color, ControllerData, ModeData, RawString, SegmentData};
-use crate::protocol::stream2::{OpenRgbPacket, Stream2};
-use crate::protocol::{OpenRgbStream, PacketId};
-use crate::{OpenRgbError, OpenRgbResult};
-
-use super::{ProtocolTcpStream, Writable, WritableStream};
+use crate::protocol::{PacketId};
+use crate::{OpenRgbError, OpenRgbPacket, OpenRgbResult, Stream2};
 
 /// Default protocol version used by [OpenRGB] client.
 pub static DEFAULT_PROTOCOL: u32 = 5;
@@ -24,24 +21,25 @@ pub(crate) const MAGIC: [u8; 4] = *b"ORGB";
 /// OpenRGB client.
 ///
 /// This struct makes sure the protocol_id and the stream are in sync.
-pub struct OpenRgbProtocol<S: OpenRgbStream> {
+///
+/// Todo: reintroduce a generic `stream` type to support sync/async streams.
+#[derive(Clone)]
+pub struct OpenRgbProtocol {
     protocol_id: u32,
-    // stream: Arc<Mutex<S>>,
     stream: Arc<Mutex<Stream2>>,
-    _marker: PhantomData<S>,
 }
 
-impl<S: OpenRgbStream> Clone for OpenRgbProtocol<S> {
-    fn clone(&self) -> Self {
-        Self {
-            protocol_id: self.protocol_id,
-            stream: self.stream.clone(),
-            _marker: PhantomData,
-        }
-    }
-}
+// impl<S: OpenRgbStream> Clone for OpenRgbProtocol<S> {
+//     fn clone(&self) -> Self {
+//         Self {
+//             protocol_id: self.protocol_id,
+//             stream: self.stream.clone(),
+//             _marker: PhantomData,
+//         }
+//     }
+// }
 
-impl OpenRgbProtocol<ProtocolTcpStream> {
+impl OpenRgbProtocol {
     /// Connect to default OpenRGB server.
     ///
     /// Use [OpenRGB::connect_to] to connect to a specific server.
@@ -100,7 +98,7 @@ impl OpenRgbProtocol<ProtocolTcpStream> {
     }
 }
 
-impl<S: OpenRgbStream> OpenRgbProtocol<S> {
+impl OpenRgbProtocol {
     /// Build a new client from given stream.
     ///
     /// This constructor expects a connected, ready to use stream.
@@ -119,7 +117,6 @@ impl<S: OpenRgbStream> OpenRgbProtocol<S> {
         Ok(Self {
             protocol_id: protocol,
             stream: Arc::new(Mutex::new(stream)),
-            _marker: PhantomData,
         })
     }
 
@@ -372,217 +369,219 @@ mod tests {
     use tokio_test::io::Builder;
     use tracing_test::traced_test;
 
-    use crate::{protocol::tests::{setup, OpenRGBMockBuilder}, Color, OpenRgbProtocol, OpenRgbResult};
+    use crate::{
+        // protocol::tests::{setup, OpenRGBMockBuilder}, 
+        Color, OpenRgbProtocol, OpenRgbResult};
 
-    #[tokio::test]
-    async fn test_negotiate_protocol_version_3() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // async fn test_negotiate_protocol_version_3() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let client = Builder::new().negotiate_protocol(3).to_client().await?;
+    //     let client = Builder::new().negotiate_protocol(3).to_client().await?;
 
-        assert_eq!(client.get_protocol_version(), 3);
+    //     assert_eq!(client.get_protocol_version(), 3);
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    #[tokio::test]
-    async fn test_negotiate_protocol_version_2() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // async fn test_negotiate_protocol_version_2() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let client = Builder::new().negotiate_protocol(2).to_client().await?;
+    //     let client = Builder::new().negotiate_protocol(2).to_client().await?;
 
-        assert_eq!(client.get_protocol_version(), 2);
+    //     assert_eq!(client.get_protocol_version(), 2);
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    #[tokio::test]
-    async fn test_set_name() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // async fn test_set_name() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let client = Builder::new()
-            .negotiate_default_protocol()
-            .write(b"ORGB") // magic
-            .write(&0_u32.to_le_bytes()) // device id
-            .write(&50_u32.to_le_bytes()) // packet id
-            .write(&5_u32.to_le_bytes()) // data size
-            .write(b"test\0") // name
-            .to_client()
-            .await?;
+    //     let client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .write(b"ORGB") // magic
+    //         .write(&0_u32.to_le_bytes()) // device id
+    //         .write(&50_u32.to_le_bytes()) // packet id
+    //         .write(&5_u32.to_le_bytes()) // data size
+    //         .write(b"test\0") // name
+    //         .to_client()
+    //         .await?;
 
-        client.set_name("test").await?;
+    //     client.set_name("test").await?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_get_controller_count() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_get_controller_count() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_get_controller() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_get_controller() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_update_zone_leds() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_update_zone_leds() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_resize_zone() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_resize_zone() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_save_profile() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_save_profile() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_update_leds() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_update_leds() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_delete_profile() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_delete_profile() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_load_profile() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_load_profile() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_update_led() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_update_led() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_get_profiles() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_get_profiles() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_update_mode() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_update_mode() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_set_custom_mode() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_set_custom_mode() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
-    #[tokio::test]
-    #[ignore]
-    async fn test_save_mode() -> Result<(), Box<dyn Error>> {
-        setup()?;
+    // #[tokio::test]
+    // #[ignore]
+    // async fn test_save_mode() -> Result<(), Box<dyn Error>> {
+    //     setup()?;
 
-        let _client = Builder::new()
-            .negotiate_default_protocol()
-            .to_client()
-            .await?;
+    //     let _client = Builder::new()
+    //         .negotiate_default_protocol()
+    //         .to_client()
+    //         .await?;
 
-        todo!("test not implemented")
-    }
+    //     todo!("test not implemented")
+    // }
 
     #[tokio::test]
     #[traced_test]

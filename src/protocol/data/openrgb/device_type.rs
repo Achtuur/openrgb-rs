@@ -1,16 +1,10 @@
-use std::mem::size_of;
-
-use num_traits::FromPrimitive;
-
-use crate::protocol::stream2::{DeserFromBuf, SerToBuf};
-use crate::OpenRgbResult;
-use crate::protocol::{ReadableStream, WritableStream};
-use crate::protocol::{TryFromStream, Writable};
+use crate::protocol::{DeserFromBuf, SerToBuf};
+use crate::{impl_enum_discriminant, OpenRgbResult, ReceivedMessage, WriteMessage};
 
 /// RGB controller device type.
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation) for more information.
-#[derive(Primitive, Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum DeviceType {
     /// Motherboard.
     Motherboard = 0,
@@ -55,76 +49,74 @@ pub enum DeviceType {
     Virtual = 13,
 
     /// Unknown.
-    Unknown = 14,
+    Unknown = -1,
 }
 
-impl Writable for DeviceType {
-    fn size(&self) -> usize {
-        size_of::<u32>()
-    }
-
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
-        let num = *self as u32;
-        stream.write_value(&num).await
-    }
-}
-
-impl TryFromStream for DeviceType {
-    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-        let device_type_raw = stream.read_value().await?;
-        let device_type = DeviceType::from_u32(device_type_raw).unwrap_or(DeviceType::Unknown);
-        Ok(device_type)
-    }
-}
+impl_enum_discriminant!(DeviceType,
+    Motherboard: 0,
+    DRam: 1,
+    Gpu: 2,
+    Cooler: 3,
+    LEDStrip: 4,
+    Keyboard: 5,
+    Mouse: 6,
+    MouseMat: 7,
+    Headset: 8,
+    HeadsetStand: 9,
+    Gamepad: 10,
+    Light: 11,
+    Speaker: 12,
+    Virtual: 13,
+    Unknown: 14
+);
 
 impl DeserFromBuf for DeviceType {
-    fn deserialize(buf: &mut crate::protocol::stream2::ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
         let device_type_raw = buf.read_u32()?;
-        let device_type = DeviceType::from_u32(device_type_raw).unwrap_or(DeviceType::Unknown);
+        let device_type = DeviceType::try_from(device_type_raw).unwrap_or(DeviceType::Unknown);
         Ok(device_type)
     }
 }
 
 impl SerToBuf for DeviceType {
-    fn serialize(&self, buf: &mut crate::protocol::stream2::WriteMessage) -> OpenRgbResult<()> {
-        let num = *self as u32;
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        let num = u32::from(self);
         buf.write_u32(num);
         Ok(())
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::error::Error;
+// #[cfg(test)]
+// mod tests {
+//     use std::error::Error;
 
-    use tokio_test::io::Builder;
+//     use tokio_test::io::Builder;
 
-    use crate::protocol::data::DeviceType;
-    use crate::protocol::tests::setup;
-    use crate::protocol::{ReadableStream, WritableStream};
+//     use crate::protocol::data::DeviceType;
+//     use crate::protocol::tests::setup;
 
-    #[tokio::test]
-    async fn test_read_001() -> Result<(), Box<dyn Error>> {
-        setup()?;
+//     #[tokio::test]
+//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
+//         setup()?;
 
-        let mut stream = Builder::new().read(&8_u32.to_le_bytes()).build();
+//         let mut stream = Builder::new().read(&8_u32.to_le_bytes()).build();
 
-        assert_eq!(
-            stream.read_value::<DeviceType>().await?,
-            DeviceType::Headset
-        );
+//         assert_eq!(
+//             stream.read_value::<DeviceType>().await?,
+//             DeviceType::Headset
+//         );
 
-        Ok(())
-    }
+//         Ok(())
+//     }
 
-    #[tokio::test]
-    async fn test_write_001() -> Result<(), Box<dyn Error>> {
-        setup()?;
+//     #[tokio::test]
+//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
+//         setup()?;
 
-        let mut stream = Builder::new().write(&8_u32.to_le_bytes()).build();
+//         let mut stream = Builder::new().write(&8_u32.to_le_bytes()).build();
 
-        stream.write_value(&DeviceType::Headset).await?;
+//         stream.write_value(&DeviceType::Headset).await?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }

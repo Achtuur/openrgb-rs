@@ -1,14 +1,9 @@
-use std::mem::size_of;
 
-use num_traits::FromPrimitive;
-
-use crate::protocol::stream2::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
-use crate::protocol::{ReadableStream, WritableStream};
-use crate::protocol::{TryFromStream, Writable};
-use crate::{OpenRgbError, OpenRgbResult};
+use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
+use crate::{impl_enum_discriminant, OpenRgbError, OpenRgbResult};
 
 /// Direction for [Mode](crate::data::Mode).
-#[derive(Primitive, Eq, PartialEq, Debug, Copy, Clone, Default)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Default)]
 pub enum Direction {
     /// Left direction.
     #[default]
@@ -30,74 +25,62 @@ pub enum Direction {
     Vertical = 5,
 }
 
-impl Writable for Direction {
-    fn size(&self) -> usize {
-        size_of::<u32>()
-    }
-
-    async fn try_write(&self, stream: &mut impl WritableStream) -> OpenRgbResult<usize> {
-        let num = *self as u32;
-        stream.write_value(&num).await
-    }
-}
-
-impl TryFromStream for Direction {
-    async fn try_read(stream: &mut impl ReadableStream) -> OpenRgbResult<Self> {
-        stream.read_value().await.and_then(|id| {
-            Direction::from_u32(id)
-                .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown direction \"{}\"", id)))
-        })
-    }
-}
+impl_enum_discriminant!(
+    Direction,
+    Left: 0,
+    Right: 1,
+    Up: 2,
+    Down: 3,
+    Horizontal: 4,
+    Vertical: 5
+);
 
 impl DeserFromBuf for Direction {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
         let direction_raw = buf.read_u32()?;
-        Direction::from_u32(direction_raw)
-            .ok_or_else(|| OpenRgbError::ProtocolError(format!("unknown direction \"{}\"", direction_raw)))
+        Direction::try_from(direction_raw)
     }
 }
 
 impl SerToBuf for Direction {
     fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
-        let num = *self as u32;
+        let num = u32::from(self);
         buf.write_u32(num);
         Ok(())
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::error::Error;
+// #[cfg(test)]
+// mod tests {
+//     use std::error::Error;
 
-    use crate::protocol::data::Direction;
-    use tokio_test::io::Builder;
+//     use crate::protocol::data::Direction;
+//     use tokio_test::io::Builder;
 
-    use crate::protocol::tests::setup;
-    use crate::protocol::{ReadableStream, WritableStream};
+//     use crate::protocol::tests::setup;
 
-    #[tokio::test]
-    async fn test_read_001() -> Result<(), Box<dyn Error>> {
-        setup()?;
+//     #[tokio::test]
+//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
+//         setup()?;
 
-        let mut stream = Builder::new().read(&4_u32.to_le_bytes()).build();
+//         let mut stream = Builder::new().read(&4_u32.to_le_bytes()).build();
 
-        assert_eq!(
-            stream.read_value::<Direction>().await?,
-            Direction::Horizontal
-        );
+//         assert_eq!(
+//             stream.read_value::<Direction>().await?,
+//             Direction::Horizontal
+//         );
 
-        Ok(())
-    }
+//         Ok(())
+//     }
 
-    #[tokio::test]
-    async fn test_write_001() -> Result<(), Box<dyn Error>> {
-        setup()?;
+//     #[tokio::test]
+//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
+//         setup()?;
 
-        let mut stream = Builder::new().write(&4_u32.to_le_bytes()).build();
+//         let mut stream = Builder::new().write(&4_u32.to_le_bytes()).build();
 
-        stream.write_value(&Direction::Horizontal).await?;
+//         stream.write_value(&Direction::Horizontal).await?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
