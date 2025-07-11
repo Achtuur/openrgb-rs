@@ -3,7 +3,10 @@ name = "openrgb"
 version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
-authors = ["Julien Nicoulaud <julien.nicoulaud@gmail.com>"]
+authors = [
+    "Julien Nicoulaud <julien.nicoulaud@gmail.com>",
+    "Arthur de Groot <arthurdegroot99@gmail.com>",
+]
 description = "OpenRGB SDK client"
 documentation = "https://docs.rs/openrgb"
 homepage = "https://github.com/nicoulaj/openrgb-rs"
