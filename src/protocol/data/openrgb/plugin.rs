@@ -14,6 +14,33 @@ pub struct PluginData {
     plugin_protocol_version: u32,
 }
 
+impl PluginData {
+    /// Returns the name of this plugin.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Returns the description of this plugin.
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    /// Returns the version of this plugin.
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    /// Returns the index of this plugin.
+    pub fn index(&self) -> u32 {
+        self.index
+    }
+
+    /// Returns the protocol version of this plugin.
+    pub fn plugin_protocol_version(&self) -> u32 {
+        self.plugin_protocol_version
+    }
+}
+
 impl DeserFromBuf for PluginData {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> crate::OpenRgbResult<Self> {
         let name = buf.read_value()?;

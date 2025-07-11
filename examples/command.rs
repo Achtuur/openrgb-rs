@@ -1,4 +1,4 @@
-use openrgb::{Color, Controller, ControllerGroup, OpenRgbClient, OpenRgbResult};
+use openrgb::{Color, OpenRgbClient, OpenRgbResult};
 
 #[tokio::main]
 async fn main() -> OpenRgbResult<()> {
@@ -6,14 +6,20 @@ async fn main() -> OpenRgbResult<()> {
     let client = OpenRgbClient::connect().await?;
 
     let controllers = client.get_all_controllers().await?;
-    let controller = controllers.iter().next().expect("Must have at least one controller");
+    let controller = controllers
+        .iter()
+        .next()
+        .expect("Must have at least one controller");
 
     println!("Performing example on {}", controller.name());
     let mut cmd = controller.cmd();
     // Set all LEDs to red
     cmd.add_set_leds(vec![Color::new(255, 0, 0); controller.num_leds()])?;
     // First zone to green
-    cmd.add_set_zone_leds(0, vec![Color::new(0, 255, 0); controller.get_zone(0)?.num_leds()])?;
+    cmd.add_set_zone_leds(
+        0,
+        vec![Color::new(0, 255, 0); controller.get_zone(0)?.num_leds()],
+    )?;
     // First led to blue
     cmd.add_set_led(0, Color::new(0, 0, 255))?;
     // This is now equivalent to a single `controller.set_leds(...)` command

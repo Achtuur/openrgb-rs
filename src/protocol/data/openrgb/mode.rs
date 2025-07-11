@@ -1,16 +1,9 @@
-use flagset::{flags, FlagSet};
+use flagset::{FlagSet, flags};
 
 use crate::data::ProtocolOption;
 use crate::protocol::{DeserFromBuf, SerToBuf, WriteMessage};
-use crate::OpenRgbError::{self};
-use crate::{impl_enum_discriminant, ReceivedMessage};
-use crate::{
-    OpenRgbResult,
-    protocol::data::{
-        Color,
-    },
-};
-
+use crate::{OpenRgbResult, protocol::data::Color};
+use crate::{ReceivedMessage, impl_enum_discriminant};
 
 flags! {
     /// RGB controller mode flags.
@@ -85,7 +78,6 @@ impl_enum_discriminant!(
     Vertical: 5
 );
 
-
 /// RGB controller color mode.
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation) for more information.
@@ -106,7 +98,6 @@ pub enum ColorMode {
 }
 
 impl_enum_discriminant!(ColorMode, None: 0, PerLED: 1, ModeSpecific: 2, Random: 3);
-
 
 /// RGB controller mode.
 ///
@@ -166,6 +157,7 @@ pub struct ModeData {
 }
 
 impl ModeData {
+    /// Returns the name of this mode.
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -211,7 +203,9 @@ impl ModeData {
     ///
     /// If `ModeFlag::HasSpeed` is not set, returns `None`.
     pub fn speed(&self) -> Option<u32> {
-        self.flags.contains(ModeFlag::HasSpeed).then_some(self.speed)
+        self.flags
+            .contains(ModeFlag::HasSpeed)
+            .then_some(self.speed)
     }
 
     /// Set the speed setting of this mode.
@@ -225,21 +219,27 @@ impl ModeData {
     ///
     /// If `ModeFlag::HasSpeed` is not set, returns `None`.
     pub fn speed_min(&self) -> Option<u32> {
-        self.flags.contains(ModeFlag::HasSpeed).then_some(self.speed_min)
+        self.flags
+            .contains(ModeFlag::HasSpeed)
+            .then_some(self.speed_min)
     }
 
     /// Returns the maximum speed setting of this mode.
     ///
     /// If `ModeFlag::HasSpeed` is not set, returns `None`.
     pub fn speed_max(&self) -> Option<u32> {
-        self.flags.contains(ModeFlag::HasSpeed).then_some(self.speed_max)
+        self.flags
+            .contains(ModeFlag::HasSpeed)
+            .then_some(self.speed_max)
     }
 
     /// Returns the direction of this mode.
     ///
     /// If `ModeFlag::HasDirection` is not set, returns `None`.
     pub fn direction(&self) -> Option<Direction> {
-        self.flags.contains(ModeFlag::HasDirection).then_some(self.direction)
+        self.flags
+            .contains(ModeFlag::HasDirection)
+            .then_some(self.direction)
     }
 
     /// Returns the color mode of this mode.
@@ -306,25 +306,23 @@ impl DeserFromBuf for ModeData {
 
 impl SerToBuf for ModeData {
     fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
-        buf
-        .push_value(&self.name)?
-        .push_value(&self.value)?
-        .push_value(&self.flags)?
-        .push_value(&self.speed_min)?
-        .push_value(&self.speed_max)?
-        .push_value(&self.brightness_min)?
-        .push_value(&self.brightness_max)?
-        .push_value(&self.brightness)?
-        .push_value(&self.colors_min)?
-        .push_value(&self.colors_max)?
-        .push_value(&self.speed)?
-        .push_value(&self.direction)?
-        .push_value(&self.color_mode)?
-        .push_value(&self.colors)?;
+        buf.push_value(&self.name)?
+            .push_value(&self.value)?
+            .push_value(&self.flags)?
+            .push_value(&self.speed_min)?
+            .push_value(&self.speed_max)?
+            .push_value(&self.brightness_min)?
+            .push_value(&self.brightness_max)?
+            .push_value(&self.brightness)?
+            .push_value(&self.colors_min)?
+            .push_value(&self.colors_max)?
+            .push_value(&self.speed)?
+            .push_value(&self.direction)?
+            .push_value(&self.color_mode)?
+            .push_value(&self.colors)?;
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -332,16 +330,17 @@ mod tests {
 
     use flagset::FlagSet;
 
-    use crate::{data::{ColorMode, Direction}, protocol::data::ModeFlag, Color, ModeData, ProtocolOption, WriteMessage};
+    use crate::{
+        Color, ModeData, ProtocolOption, WriteMessage,
+        data::{ColorMode, Direction},
+        protocol::data::ModeFlag,
+    };
     use ModeFlag::*;
-
 
     #[tokio::test]
     async fn test_read_flag() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&154_u32)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&154_u32)?.to_received_msg();
 
         assert_eq!(
             msg.read_value::<FlagSet<ModeFlag>>()?,
@@ -358,10 +357,7 @@ mod tests {
             .push_value(&(ModeFlag::HasBrightness | ModeFlag::HasSpeed))?
             .to_received_msg();
 
-        assert_eq!(
-            msg.read_value::<u32>()?,
-            (1 << 4) | (1 << 0)
-        );
+        assert_eq!(msg.read_value::<u32>()?, (1 << 4) | (1 << 0));
 
         Ok(())
     }
@@ -369,9 +365,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_dir() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&3_u32)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&3_u32)?.to_received_msg();
 
         assert_eq!(msg.read_value::<Direction>()?, Direction::Down);
         Ok(())
@@ -380,9 +374,7 @@ mod tests {
     #[tokio::test]
     async fn test_write_dir() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&Direction::Down)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&Direction::Down)?.to_received_msg();
         assert_eq!(msg.read_value::<u32>()?, 3);
         Ok(())
     }
@@ -390,9 +382,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_color_mode() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&3_u32)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&3_u32)?.to_received_msg();
 
         assert_eq!(msg.read_value::<ColorMode>()?, ColorMode::Random);
         Ok(())
@@ -401,36 +391,41 @@ mod tests {
     #[tokio::test]
     async fn test_write_color_mode() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&ColorMode::Random)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&ColorMode::Random)?.to_received_msg();
         assert_eq!(msg.read_value::<u32>()?, 3);
         Ok(())
     }
-
 
     #[test]
     fn test_read_001() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(3);
         let mut msg = buf
-        .push_value(&"test")? // name
-        .push_value(&46_i32)? // value
-        .push_value(&31_u32)? // flags
-        .push_value(&10_u32)? // speed_min
-        .push_value(&1000_u32)? // speed_max
-        .push_value(&1_u32)? // brightness_min
-        .push_value(&1024_u32)? // brightness_max
-        .push_value(&512_u32)? // brightness
-        .push_value(&0_u32)? // colors_min
-        .push_value(&256_u32)? // colors_max
-        .push_value(&51_u32)? // speed
-        .push_value(&4_u32)? // direction
-        .push_value(&1_u32)? // color_mode
-        .push_value(&[
-            Color { r: 37, g: 54, b: 126 },
-            Color { r: 37, g: 54, b: 255 },
-        ])?
-        .to_received_msg();
+            .push_value(&"test")? // name
+            .push_value(&46_i32)? // value
+            .push_value(&31_u32)? // flags
+            .push_value(&10_u32)? // speed_min
+            .push_value(&1000_u32)? // speed_max
+            .push_value(&1_u32)? // brightness_min
+            .push_value(&1024_u32)? // brightness_max
+            .push_value(&512_u32)? // brightness
+            .push_value(&0_u32)? // colors_min
+            .push_value(&256_u32)? // colors_max
+            .push_value(&51_u32)? // speed
+            .push_value(&4_u32)? // direction
+            .push_value(&1_u32)? // color_mode
+            .push_value(&[
+                Color {
+                    r: 37,
+                    g: 54,
+                    b: 126,
+                },
+                Color {
+                    r: 37,
+                    g: 54,
+                    b: 255,
+                },
+            ])?
+            .to_received_msg();
 
         let mode_data = msg.read_value::<ModeData>()?;
 
@@ -448,11 +443,18 @@ mod tests {
         assert_eq!(
             mode_data.colors(),
             &[
-                Color { r: 37, g: 54, b: 126 },
-                Color { r: 37, g: 54, b: 255 }
+                Color {
+                    r: 37,
+                    g: 54,
+                    b: 126
+                },
+                Color {
+                    r: 37,
+                    g: 54,
+                    b: 255
+                }
             ]
         );
-
 
         Ok(())
     }
@@ -475,8 +477,16 @@ mod tests {
             direction: Direction::Horizontal,
             color_mode: ColorMode::PerLED,
             colors: vec![
-                Color { r: 37, g: 54, b: 126 },
-                Color { r: 37, g: 54, b: 255 },
+                Color {
+                    r: 37,
+                    g: 54,
+                    b: 126,
+                },
+                Color {
+                    r: 37,
+                    g: 54,
+                    b: 255,
+                },
             ],
         };
 

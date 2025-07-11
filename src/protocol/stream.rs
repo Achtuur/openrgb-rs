@@ -1,8 +1,11 @@
 use std::pin::Pin;
 
-use crate::{DeserFromBuf, OpenRgbError, OpenRgbResult, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::protocol::PacketId;
-use tokio::{io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt}, net::{TcpStream, ToSocketAddrs}};
+use crate::{DeserFromBuf, OpenRgbError, OpenRgbResult, ReceivedMessage, SerToBuf, WriteMessage};
+use tokio::{
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    net::{TcpStream, ToSocketAddrs},
+};
 
 /// Utility struct to write packets.
 /// Some packets need to be prepended by their length.
@@ -53,7 +56,11 @@ impl OpenRgbMessageHeader {
         let device_id = recv.read_u32()?;
         let packet_id = recv.read_value::<PacketId>()?;
         let packet_size = recv.read_u32()?;
-        Ok(Self {device_id, packet_id, packet_size,})
+        Ok(Self {
+            device_id,
+            packet_id,
+            packet_size,
+        })
     }
 
     async fn write(&self, stream: &mut TcpStream) -> OpenRgbResult<()> {
@@ -71,11 +78,14 @@ impl OpenRgbMessageHeader {
 /// The version is tagged to all received and written packets, since packet format depends on protocol version.
 pub(crate) struct ProtocolStream {
     stream: TcpStream,
-    protocol_version: u32
+    protocol_version: u32,
 }
 
 impl ProtocolStream {
-    pub async fn connect<A: ToSocketAddrs>(addr: A, protocol_version: u32) -> std::io::Result<Self> {
+    pub async fn connect<A: ToSocketAddrs>(
+        addr: A,
+        protocol_version: u32,
+    ) -> std::io::Result<Self> {
         let stream = TcpStream::connect(addr).await?;
         Ok(Self {
             stream,
@@ -101,7 +111,11 @@ impl ProtocolStream {
         self.read_packet(device_id, packet_id).await
     }
 
-    pub async fn read_packet<T: DeserFromBuf>(&mut self, device_id: u32, packet_id: PacketId,) -> OpenRgbResult<T> {
+    pub async fn read_packet<T: DeserFromBuf>(
+        &mut self,
+        device_id: u32,
+        packet_id: PacketId,
+    ) -> OpenRgbResult<T> {
         // the header tells us exactly how long the packet is, so we might as well read it all at once
         let header = self.read_header(device_id, packet_id).await?;
         let mut buf = vec![0u8; header.packet_size as usize];
@@ -111,13 +125,20 @@ impl ProtocolStream {
         T::deserialize(&mut recv)
     }
 
-    pub async fn write_packet<T: SerToBuf>(&mut self, device_id: u32, packet_id: PacketId, data: &T) -> OpenRgbResult<()> {
+    pub async fn write_packet<T: SerToBuf>(
+        &mut self,
+        device_id: u32,
+        packet_id: PacketId,
+        data: &T,
+    ) -> OpenRgbResult<()> {
         // let mut buf = Vec::with_capacity(8);
         let mut buf = WriteMessage::new(self.protocol_version());
         data.serialize(&mut buf)?;
         let packet_size = buf.len() as u32;
         let header = OpenRgbMessageHeader {
-            packet_id, device_id, packet_size,
+            packet_id,
+            device_id,
+            packet_size,
         };
         header.write(&mut self.stream).await?;
 
@@ -126,7 +147,11 @@ impl ProtocolStream {
         Ok(())
     }
 
-    async fn read_header(&mut self, device_id: u32, packet_id: PacketId) -> OpenRgbResult<OpenRgbMessageHeader> {
+    async fn read_header(
+        &mut self,
+        device_id: u32,
+        packet_id: PacketId,
+    ) -> OpenRgbResult<OpenRgbMessageHeader> {
         let header = OpenRgbMessageHeader::read(&mut self.stream).await?;
         if header.packet_id != packet_id {
             return Err(OpenRgbError::ProtocolError(format!(
@@ -143,7 +168,6 @@ impl ProtocolStream {
         Ok(header)
     }
 }
-
 
 impl AsyncRead for ProtocolStream {
     fn poll_read(

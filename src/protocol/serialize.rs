@@ -1,8 +1,4 @@
-use std::io::Write;
-
-
 use crate::{OpenRgbError, OpenRgbResult};
-
 
 /// Deserialize an object from a byte buffer.
 pub(crate) trait DeserFromBuf {
@@ -19,8 +15,13 @@ pub(crate) struct ReceivedMessage<'a> {
 
 impl std::fmt::Display for ReceivedMessage<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Received (protocol: {}, offset: {}): {:?})",
-               self.protocol_version, self.idx, self.available_buf())
+        write!(
+            f,
+            "Received (protocol: {}, offset: {}): {:?})",
+            self.protocol_version,
+            self.idx,
+            self.available_buf()
+        )
     }
 }
 
@@ -45,7 +46,9 @@ impl<'a> ReceivedMessage<'a> {
     pub fn read_u8(&mut self) -> OpenRgbResult<u8> {
         let b = self.available_buf();
         if b.len() < size_of::<u8>() {
-            return Err(OpenRgbError::ProtocolError("Not enough bytes to read u8".to_string()));
+            return Err(OpenRgbError::ProtocolError(
+                "Not enough bytes to read u8".to_string(),
+            ));
         }
         let byte = self.buf[self.idx];
         self.idx += size_of::<u8>();
@@ -55,7 +58,9 @@ impl<'a> ReceivedMessage<'a> {
     pub fn read_u16(&mut self) -> OpenRgbResult<u16> {
         let b = self.available_buf();
         if b.len() < size_of::<u16>() {
-            return Err(OpenRgbError::ProtocolError("Not enough bytes to read u16".to_string()));
+            return Err(OpenRgbError::ProtocolError(
+                "Not enough bytes to read u16".to_string(),
+            ));
         }
         let value = u16::from_le_bytes([b[0], b[1]]);
         self.idx += size_of::<u16>();
@@ -65,7 +70,9 @@ impl<'a> ReceivedMessage<'a> {
     pub fn read_u32(&mut self) -> OpenRgbResult<u32> {
         let b = self.available_buf();
         if b.len() < size_of::<u32>() {
-            return Err(OpenRgbError::ProtocolError("Not enough bytes to read u32".to_string()));
+            return Err(OpenRgbError::ProtocolError(
+                "Not enough bytes to read u32".to_string(),
+            ));
         }
         let value = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
         self.idx += size_of::<u32>();

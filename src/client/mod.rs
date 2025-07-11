@@ -1,23 +1,20 @@
 //! Wrapper around the OpenRGB client to make it friendlier to use.
 
-mod controller;
-mod zone;
 mod command;
+mod controller;
 mod group;
 mod segment;
+mod zone;
 
-pub use {
-    controller::*,
-    zone::*,
-    group::*,
-    segment::*,
-    command::*,
-};
+pub use {command::*, controller::*, group::*, segment::*, zone::*};
 
 use tokio::net::ToSocketAddrs;
 
 use crate::{
-    data::DeviceType, error::OpenRgbResult, protocol::{data::ModeData, OpenRgbProtocol, DEFAULT_ADDR}, Color, OpenRgbError, DEFAULT_PROTOCOL
+    DEFAULT_PROTOCOL, OpenRgbError, PluginData,
+    data::DeviceType,
+    error::OpenRgbResult,
+    protocol::{DEFAULT_ADDR, OpenRgbProtocol},
 };
 
 /// Client for the OpenRGB SDK server that provides methods to interact with OpenRGB.
@@ -104,14 +101,17 @@ impl OpenRgbClient {
     /// # Errors
     ///
     /// This function returns an error if communication with the OpenRGB SDK server fails.
-    pub async fn get_controllers_of_type(&self, device_type: DeviceType) -> OpenRgbResult<ControllerGroup> {
+    pub async fn get_controllers_of_type(
+        &self,
+        device_type: DeviceType,
+    ) -> OpenRgbResult<ControllerGroup> {
         let group = self.get_all_controllers().await?;
         group
-        .split_per_type()
-        .remove(&device_type)
-        .ok_or(OpenRgbError::CommandError(format!(
-            "No controllers of type {device_type:?} found"
-        )))
+            .split_per_type()
+            .remove(&device_type)
+            .ok_or(OpenRgbError::CommandError(format!(
+                "No controllers of type {device_type:?} found"
+            )))
     }
 
     /// Gets a controller by its index.
@@ -132,31 +132,45 @@ impl OpenRgbClient {
         self.proto.get_protocol_version()
     }
 
+    /// Sets the name for this client's connection.
+    ///
+    /// This is viewable in the OpenRGB SDK server tab
     pub async fn set_name(&mut self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.proto.set_name(name).await
     }
 
+    /// Returns the available profiles on OpenRGB
     pub async fn get_profiles(&self) -> OpenRgbResult<Vec<String>> {
         self.proto.get_profiles().await
     }
 
+    /// Saves the current profile with the given name.
     pub async fn save_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.proto.save_profile(name).await
     }
 
+    /// Load the profile with the given name.
     pub async fn load_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.proto.load_profile(name).await
     }
 
+    /// Deletes the profile with the given name.
     pub async fn delete_profile(&self, name: impl Into<String>) -> OpenRgbResult<()> {
         self.proto.delete_profile(name).await
     }
 
+    /// Returns the number of controllers connected to OpenRGB.
     pub async fn get_controller_count(&mut self) -> OpenRgbResult<u32> {
         self.proto.get_controller_count().await
     }
 
-    pub async fn save_mode(&self, controller_id: u32, mode: ModeData) -> OpenRgbResult<()> {
-        self.proto.save_mode(controller_id, &mode).await
+    /// Returns a list of available plugins installed on OpenRGB.
+    pub async fn get_plugins(&self) -> OpenRgbResult<Vec<PluginData>> {
+        self.proto.get_plugins().await
+    }
+
+    /// Forces the OpenRGB instance to rescan for devices.
+    pub async fn rescan_devices(&self) -> OpenRgbResult<()> {
+        self.proto.rescan_devices().await
     }
 }

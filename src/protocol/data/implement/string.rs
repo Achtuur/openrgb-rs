@@ -6,7 +6,8 @@ use crate::{OpenRgbError, OpenRgbResult};
 impl DeserFromBuf for String {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self>
     where
-        Self: Sized {
+        Self: Sized,
+    {
         let len = buf.read_u16()? as usize;
         let mut bytes = vec![0u8; len];
         buf.read_exact(&mut bytes)?;
@@ -31,7 +32,6 @@ impl SerToBuf for &str {
     }
 }
 
-
 /// A raw string that does not include the length in its serialized form.
 ///
 /// If the length is needed, serialize a `&str` or `String` instead.
@@ -49,20 +49,17 @@ impl SerToBuf for RawString<'_> {
 #[cfg(test)]
 mod tests {
     use std::error::Error;
-    use std::fmt::Write;
 
-    use tokio_test::io::Builder;
-
-    use crate::protocol::data::implement::string::RawString;
     use crate::WriteMessage;
+    use crate::protocol::data::implement::string::RawString;
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
         let mut msg = buf
-        .push_value(&5_u16)?
-        .push_value(&RawString("test"))?
-        .to_received_msg();
+            .push_value(&5_u16)?
+            .push_value(&RawString("test"))?
+            .to_received_msg();
 
         assert_eq!(msg.read_value::<String>()?, "test".to_string());
         Ok(())

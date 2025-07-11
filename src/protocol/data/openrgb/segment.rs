@@ -1,5 +1,6 @@
 use crate::{
-    protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage}, OpenRgbError, OpenRgbResult, ZoneType
+    OpenRgbError, OpenRgbResult, ZoneType,
+    protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage},
 };
 
 /// Data for OpenRGB segments
@@ -18,9 +19,9 @@ pub struct SegmentData {
 }
 
 impl SegmentData {
-    pub(crate) fn new(name: String, start_idx: u32, led_count: u32) -> Self {
+    pub(crate) fn new(name: impl Into<String>, start_idx: u32, led_count: u32) -> Self {
         Self {
-            name,
+            name: name.into(),
             seg_type: ZoneType::Linear,
             start_idx,
             led_count,

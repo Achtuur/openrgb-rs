@@ -1,12 +1,11 @@
 use array2d::Array2D;
-use flagset::{flags, FlagSet};
+use flagset::{FlagSet, flags};
 
-use crate::protocol::{DeserFromBuf, ReceivedMessage};
-use crate::{impl_enum_discriminant, OpenRgbResult};
 use crate::protocol::data::ProtocolOption;
+use crate::protocol::{DeserFromBuf, ReceivedMessage};
+use crate::{OpenRgbResult, impl_enum_discriminant};
 
 use super::SegmentData;
-
 
 /// RGB controller [Zone](crate::data::Zone) type.
 ///
@@ -124,14 +123,12 @@ impl DeserFromBuf for ZoneData {
 mod tests {
     use std::error::Error;
 
-    use crate::{data::{DeviceType, ZoneType}, protocol::data::ColorMode, WriteMessage};
+    use crate::{WriteMessage, data::ZoneType};
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&1_u32)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&1_u32)?.to_received_msg();
 
         assert_eq!(msg.read_value::<ZoneType>()?, ZoneType::Linear);
         Ok(())
@@ -140,9 +137,7 @@ mod tests {
     #[tokio::test]
     async fn test_write_001() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&ZoneType::Linear)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&ZoneType::Linear)?.to_received_msg();
         assert_eq!(msg.read_value::<u32>()?, 1);
         Ok(())
     }

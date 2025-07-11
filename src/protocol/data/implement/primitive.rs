@@ -1,7 +1,5 @@
-
-use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::OpenRgbResult;
-
+use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 
 impl DeserFromBuf for () {
     fn deserialize(_buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
@@ -70,8 +68,8 @@ impl SerToBuf for i32 {
 
 #[cfg(test)]
 mod tests {
+    use crate::{DEFAULT_PROTOCOL, ReceivedMessage, WriteMessage};
     use std::error::Error;
-    use crate::{ReceivedMessage, WriteMessage, DEFAULT_PROTOCOL};
 
     #[tokio::test]
     async fn test_read_void_001() -> Result<(), Box<dyn Error>> {

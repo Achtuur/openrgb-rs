@@ -75,10 +75,8 @@ macro_rules! impl_enum_discriminant {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_macro() {

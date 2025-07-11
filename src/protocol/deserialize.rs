@@ -22,8 +22,13 @@ pub(crate) struct WriteMessage {
 
 impl std::fmt::Display for WriteMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "WriteMessage (protocol: {}, len: {}): {:?}",
-               self.protocol_version, self.buf.len(), &self.buf[..])
+        write!(
+            f,
+            "WriteMessage (protocol: {}, len: {}): {:?}",
+            self.protocol_version,
+            self.buf.len(),
+            &self.buf[..]
+        )
     }
 }
 

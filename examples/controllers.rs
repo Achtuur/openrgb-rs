@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use openrgb::{OpenRgbClient, OpenRgbResult};
 
 #[tokio::main]

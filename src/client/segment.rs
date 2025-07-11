@@ -1,4 +1,4 @@
-use crate::{client::command::UpdateCommand, data::SegmentData, Color, OpenRgbResult, Zone};
+use crate::{Color, OpenRgbResult, Zone, client::command::UpdateCommand, data::SegmentData};
 
 /// A segment in a zone, which can contain multiple LEDs.
 pub struct Segment<'z> {
@@ -33,12 +33,13 @@ impl<'z> Segment<'z> {
 
     /// Returns the `SegmentData` for this segment.
     pub fn data(&self) -> &SegmentData {
-        self.zone.data()
-        .segments
-        .value()
-        .expect("Segment struct created with protocol version < 4")
-        .get(self.segment_id)
-        .expect("Segment data not found")
+        self.zone
+            .data()
+            .segments
+            .value()
+            .expect("Segment struct created with protocol version < 4")
+            .get(self.segment_id)
+            .expect("Segment data not found")
     }
 
     /// Returns the number of LEDs in this segment.
@@ -63,37 +64,5 @@ impl<'z> Segment<'z> {
             segment_id: self.segment_id,
             colors,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-use crate::{OpenRgbClient, OpenRgbResult};
-
-use super::*;
-
-    #[tokio::test]
-    async fn test_segment_set_leds() -> OpenRgbResult<()> {
-        let client = OpenRgbClient::connect().await?;
-        let controller = client.get_controller(5).await?;
-        let zone = controller.get_zone(1)?;
-        let seg = zone.get_segment(0)?;
-        println!("seg.name(): {0:?}", seg.name());
-
-        let colors = [
-            Color::new(255, 255,0),
-            Color::new(0, 255, 255),
-            Color::new(255, 0, 255),
-        ];
-
-        let mut super_cmd = controller.cmd();
-        for i in 0..3 {
-            let seg = zone.get_segment(i)?;
-            let cmd = seg.update_leds_cmd(vec![colors[i]; seg.num_leds()])?;
-            super_cmd.add_command(cmd)?;
-        }
-        super_cmd.execute().await?;
-
-        Ok(())
     }
 }

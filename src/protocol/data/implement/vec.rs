@@ -1,10 +1,11 @@
-use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::OpenRgbResult;
+use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 
 impl<T: DeserFromBuf> DeserFromBuf for Vec<T> {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self>
     where
-        Self: Sized {
+        Self: Sized,
+    {
         let len = buf.read_u16()? as usize;
         let mut vec = Vec::with_capacity(len);
         for _ in 0..len {
@@ -26,8 +27,7 @@ impl<T: SerToBuf> SerToBuf for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::{error::Error, fmt::Write};
-
+    use std::error::Error;
 
     use crate::WriteMessage;
 
@@ -35,16 +35,13 @@ mod tests {
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
         let mut msg = buf
-        .push_value(&3_u16)? // length
-        .push_value(&37_u8)?
-        .push_value(&54_u8)?
-        .push_value(&126_u8)?
-        .to_received_msg();
+            .push_value(&3_u16)? // length
+            .push_value(&37_u8)?
+            .push_value(&54_u8)?
+            .push_value(&126_u8)?
+            .to_received_msg();
 
-        assert_eq!(
-            msg.read_value::<Vec<u8>>()?,
-            vec![37_u8, 54_u8, 126_u8]
-        );
+        assert_eq!(msg.read_value::<Vec<u8>>()?, vec![37_u8, 54_u8, 126_u8]);
 
         Ok(())
     }

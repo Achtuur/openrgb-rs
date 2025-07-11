@@ -1,4 +1,7 @@
-use crate::{protocol::serialize::{DeserFromBuf, ReceivedMessage}, SerToBuf, WriteMessage};
+use crate::{
+    SerToBuf, WriteMessage,
+    protocol::serialize::{DeserFromBuf, ReceivedMessage},
+};
 
 /// Option that can be used to represent values not supported by the current protocol version.
 ///
@@ -64,7 +67,8 @@ impl<const VER: usize, T> ProtocolOption<VER, T> {
 }
 
 impl<const VER: usize, T> DeserFromBuf for ProtocolOption<VER, T>
-where T: DeserFromBuf
+where
+    T: DeserFromBuf,
 {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> crate::OpenRgbResult<Self> {
         if buf.protocol_version() < VER as u32 {
@@ -76,11 +80,12 @@ where T: DeserFromBuf
 }
 
 impl<const VER: usize, T> SerToBuf for ProtocolOption<VER, T>
-where T: SerToBuf
+where
+    T: SerToBuf,
 {
     fn serialize(&self, buf: &mut WriteMessage) -> crate::OpenRgbResult<()> {
         if buf.protocol_version() < VER as u32 {
-            return Ok(())
+            return Ok(());
         }
 
         match self {

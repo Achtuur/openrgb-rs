@@ -26,13 +26,11 @@
 #[doc(inline)]
 pub use {
     client::*,
-    error::{OpenRgbError, OpenRgbResult},
     data::*,
+    error::{OpenRgbError, OpenRgbResult},
 };
 
-pub(crate) use {
-    protocol::*,
-};
+pub(crate) use protocol::*;
 
 mod client;
 mod error;

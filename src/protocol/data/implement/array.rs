@@ -1,7 +1,8 @@
 use std::mem::MaybeUninit;
 
 use crate::{
-    protocol::{DeserFromBuf, ReceivedMessage}, OpenRgbResult, SerToBuf, WriteMessage
+    OpenRgbResult, SerToBuf, WriteMessage,
+    protocol::{DeserFromBuf, ReceivedMessage},
 };
 
 impl<T: SerToBuf, const N: usize> SerToBuf for [T; N] {
@@ -10,7 +11,7 @@ impl<T: SerToBuf, const N: usize> SerToBuf for [T; N] {
     }
 }
 
-impl <T: DeserFromBuf, const N: usize> DeserFromBuf for [T; N] {
+impl<T: DeserFromBuf, const N: usize> DeserFromBuf for [T; N] {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
         let mut arr = [const { MaybeUninit::<T>::uninit() }; N];
 
@@ -20,9 +21,7 @@ impl <T: DeserFromBuf, const N: usize> DeserFromBuf for [T; N] {
         }
 
         // the for loop either writes to every element of the array or returns an error
-        unsafe {
-            Ok(std::mem::transmute_copy(&arr))
-        }
+        unsafe { Ok(std::mem::transmute_copy(&arr)) }
     }
 }
 

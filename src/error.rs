@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+/// Type alias for `Result<T, OpenRgbError>`
 pub type OpenRgbResult<T> = std::result::Result<T, OpenRgbError>;
 
 /// Errors returned by [OpenRGB client](crate::OpenRGB).

@@ -1,8 +1,7 @@
-
 use rgb::RGB8;
 
-use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::OpenRgbResult;
+use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 
 /// RGB controller color, aliased to [rgb] crate's [RGB8] type.
 ///

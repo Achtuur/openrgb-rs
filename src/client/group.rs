@@ -1,27 +1,38 @@
-use std::{collections::HashMap, ops::Index};
+use std::collections::HashMap;
 
-use crate::{client::command::UpdateLedCommandGroup, data::DeviceType, Controller, OpenRgbError, OpenRgbResult};
+use crate::{
+    Controller, OpenRgbError, OpenRgbResult, client::command::UpdateLedCommandGroup,
+    data::DeviceType,
+};
 
-
+/// Trait for things that can index into a `ControllerGroup`.
+///
+/// Currently includes `usize` (`Controller::id()`) and `&Controller`.
 pub trait ControllerIndex {
+    /// Returns a reference to the controller with the given index.
     fn index(self, group: &ControllerGroup) -> OpenRgbResult<&Controller>;
 }
 
 impl ControllerIndex for usize {
     fn index(self, group: &ControllerGroup) -> OpenRgbResult<&Controller> {
-        group.controllers.get(self)
-        .ok_or(OpenRgbError::CommandError(format!(
-            "Controller with index {self} not found"
-        )))
+        group
+            .controllers
+            .get(self)
+            .ok_or(OpenRgbError::CommandError(format!(
+                "Controller with index {self} not found"
+            )))
     }
 }
 
 impl ControllerIndex for &Controller {
     fn index(self, group: &ControllerGroup) -> OpenRgbResult<&Controller> {
-        group.controllers.get(self.id())
-        .ok_or(OpenRgbError::CommandError(format!(
-            "Controller {} not found", self.name()
-        )))
+        group
+            .controllers
+            .get(self.id())
+            .ok_or(OpenRgbError::CommandError(format!(
+                "Controller {} not found",
+                self.name()
+            )))
     }
 }
 
@@ -30,7 +41,6 @@ impl ControllerIndex for Controller {
         (&self).index(group)
     }
 }
-
 
 /// A group of controllers, this is used to manage multiple controllers at once.
 #[derive(Debug)]
@@ -58,14 +68,14 @@ impl ControllerGroup {
     /// Returns one group per device type.
     pub fn split_per_type(self) -> HashMap<DeviceType, ControllerGroup> {
         self.controllers
-        .into_iter()
-        .fold(HashMap::new(), |mut acc, controller| {
-            let entry = acc
-            .entry(controller.data().device_type)
-            .or_insert_with(ControllerGroup::empty);
-            entry.controllers.push(controller);
-            acc
-        })
+            .into_iter()
+            .fold(HashMap::new(), |mut acc, controller| {
+                let entry = acc
+                    .entry(controller.data().device_type)
+                    .or_insert_with(ControllerGroup::empty);
+                entry.controllers.push(controller);
+                acc
+            })
     }
 
     /// Returns an iterator over the controllers in this group.
@@ -73,16 +83,12 @@ impl ControllerGroup {
         self.controllers.iter()
     }
 
-    /// Converts this group into an iterator over the controllers.
-    pub fn into_iter(self) -> impl Iterator<Item = Controller> {
-        self.controllers.into_iter()
-    }
-
     /// Returns a reference to the controller with the given index.
     ///
     /// The index can be either a `usize` or a `Controller` reference.
     pub fn get_controller<I>(&self, idx: I) -> OpenRgbResult<&Controller>
-    where I: ControllerIndex
+    where
+        I: ControllerIndex,
     {
         idx.index(self)
     }
@@ -94,6 +100,7 @@ impl ControllerGroup {
         UpdateLedCommandGroup::new(self)
     }
 
+    /// Initializes all controllers in this group.
     pub async fn init(&self) -> OpenRgbResult<()> {
         for controller in &self.controllers {
             controller.init().await?;
@@ -116,7 +123,6 @@ impl ControllerGroup {
         }
         Ok(())
     }
-
 }
 
 impl IntoIterator for ControllerGroup {
@@ -139,11 +145,12 @@ impl<'a> IntoIterator for &'a ControllerGroup {
 
 #[cfg(test)]
 mod tests {
-use crate::{Color, OpenRgbClient};
+    use crate::OpenRgbClient;
 
-use super::*;
+    use super::*;
 
     #[tokio::test]
+    #[ignore = "can only test with openrgb running"]
     async fn test_group() -> OpenRgbResult<()> {
         let client = OpenRgbClient::connect().await?;
         let group = client.get_all_controllers().await?;
@@ -152,6 +159,7 @@ use super::*;
     }
 
     #[tokio::test]
+    #[ignore = "can only test with openrgb running"]
     async fn test_per_type() -> OpenRgbResult<()> {
         let client = OpenRgbClient::connect().await?;
         let group = client.get_all_controllers().await?;

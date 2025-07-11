@@ -1,6 +1,4 @@
-
 use crate::impl_enum_discriminant;
-
 
 /// OpenRGB protocol packet ID.
 ///
@@ -105,9 +103,7 @@ mod tests {
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {
         let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-            .push_value(&152_u32)?
-            .to_received_msg();
+        let mut msg = buf.push_value(&152_u32)?.to_received_msg();
 
         assert_eq!(msg.read_value::<PacketId>()?, PacketId::RequestLoadProfile);
         Ok(())

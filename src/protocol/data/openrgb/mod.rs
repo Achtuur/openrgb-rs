@@ -2,9 +2,9 @@ mod controller;
 mod device_type;
 mod led;
 mod mode;
+mod plugin;
 mod segment;
 mod zone;
-mod plugin;
 
 pub use controller::*;
 pub use device_type::*;

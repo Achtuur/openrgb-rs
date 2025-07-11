@@ -1,5 +1,5 @@
-use crate::protocol::{DeserFromBuf, ReceivedMessage};
 use crate::OpenRgbResult;
+use crate::protocol::{DeserFromBuf, ReceivedMessage};
 
 /// A single LED.
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -16,7 +16,8 @@ pub struct Led {
 impl DeserFromBuf for Led {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self>
     where
-        Self: Sized {
+        Self: Sized,
+    {
         Ok(Led {
             name: buf.read_value()?,
             value: buf.read_value()?,
