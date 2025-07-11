@@ -1,4 +1,5 @@
 use array2d::Array2D;
+use flagset::{flags, FlagSet};
 
 use crate::protocol::{DeserFromBuf, ReceivedMessage};
 use crate::{impl_enum_discriminant, OpenRgbResult};
@@ -24,6 +25,15 @@ pub enum ZoneType {
 
 impl_enum_discriminant!(ZoneType, Single: 0, Linear: 1, Matrix: 2);
 
+flags! {
+    /// Flags for RGB controller zones
+    ///
+    /// Taken from OpenRGB/RGBController.h:122-126 (11/07/2025)
+    pub enum ZoneFlags: u32 {
+        /// Zone is resizable, but only for effects. Treat as single LED
+        ResizableForEffectsOnly = 1 << 0,
+    }
+}
 
 /// RGB controller zone.
 ///
@@ -58,7 +68,7 @@ pub struct ZoneData {
     /// Flags for this zone.
     ///
     /// Minimum version: 5
-    pub flags: ProtocolOption<5, u32>,
+    pub flags: ProtocolOption<5, FlagSet<ZoneFlags>>,
 
     /// Zone LED matrix (if [Zone::type] is [ZoneType::Matrix]).
     ///
@@ -88,7 +98,13 @@ impl DeserFromBuf for ZoneData {
             }),
         };
 
-        let segments = buf.read_value()?;
+        let mut segments: ProtocolOption<4, Vec<SegmentData>> = buf.read_value()?;
+        if let Some(seg) = segments.value_mut() {
+            for (i, s) in seg.iter_mut().enumerate() {
+                s.set_id(i);
+            }
+        }
+
         let flags = buf.read_value()?;
         Ok(Self {
             id: u32::MAX,

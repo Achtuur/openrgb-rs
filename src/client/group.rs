@@ -32,13 +32,14 @@ impl ControllerIndex for Controller {
 }
 
 
+/// A group of controllers, this is used to manage multiple controllers at once.
 #[derive(Debug)]
 pub struct ControllerGroup {
     controllers: Vec<Controller>,
 }
 
 impl ControllerGroup {
-    pub fn new(controllers: Vec<Controller>) -> Self {
+    pub(crate) fn new(controllers: Vec<Controller>) -> Self {
         Self { controllers }
     }
 
@@ -48,10 +49,13 @@ impl ControllerGroup {
         }
     }
 
+    /// Returns a reference to the controllers in this group.
     pub fn controllers(&self) -> &[Controller] {
         &self.controllers
     }
 
+    /// Splits the controllers in this group by their device type.
+    /// Returns one group per device type.
     pub fn split_per_type(self) -> HashMap<DeviceType, ControllerGroup> {
         self.controllers
         .into_iter()
@@ -64,23 +68,55 @@ impl ControllerGroup {
         })
     }
 
+    /// Returns an iterator over the controllers in this group.
+    pub fn iter(&self) -> impl Iterator<Item = &Controller> {
+        self.controllers.iter()
+    }
+
+    /// Converts this group into an iterator over the controllers.
+    pub fn into_iter(self) -> impl Iterator<Item = Controller> {
+        self.controllers.into_iter()
+    }
+
+    /// Returns a reference to the controller with the given index.
+    ///
+    /// The index can be either a `usize` or a `Controller` reference.
     pub fn get_controller<I>(&self, idx: I) -> OpenRgbResult<&Controller>
     where I: ControllerIndex
     {
         idx.index(self)
     }
 
+    /// Creates a new `UpdateLedCommandGroup` for this controller group.
+    ///
+    /// See `Controller::cmd()` for more information.
     pub fn cmd(&self) -> UpdateLedCommandGroup {
         UpdateLedCommandGroup::new(self)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Controller> {
-        self.controllers.iter()
+    pub async fn init(&self) -> OpenRgbResult<()> {
+        for controller in &self.controllers {
+            controller.init().await?;
+        }
+        Ok(())
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = Controller> {
-        self.controllers.into_iter()
+    /// Set all controllers in this group to controllable mode.
+    pub async fn set_controllable_mode(&self) -> OpenRgbResult<()> {
+        for controller in &self.controllers {
+            controller.set_controllable_mode().await?;
+        }
+        Ok(())
     }
+
+    /// Turns off all LEDs in all controllers in this group.
+    pub async fn turn_off_leds(&self) -> OpenRgbResult<()> {
+        for controller in &self.controllers {
+            controller.turn_off_leds().await?;
+        }
+        Ok(())
+    }
+
 }
 
 impl IntoIterator for ControllerGroup {
@@ -103,28 +139,23 @@ impl<'a> IntoIterator for &'a ControllerGroup {
 
 #[cfg(test)]
 mod tests {
-use crate::{Color, OpenRgbClientWrapper};
+use crate::{Color, OpenRgbClient};
 
 use super::*;
 
     #[tokio::test]
     async fn test_group() -> OpenRgbResult<()> {
-        let mut client = OpenRgbClientWrapper::connect().await?;
+        let client = OpenRgbClient::connect().await?;
         let group = client.get_all_controllers().await?;
-        let mut cmd = group.cmd();
-        for i in 0..6 {
-            cmd.add_update_controller_leds(i, vec![Color::new(255, 0, 255); 10])?;
-        }
-        cmd.execute().await?;
+        group.init().await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_per_type() -> OpenRgbResult<()> {
-        let mut client = OpenRgbClientWrapper::connect().await?;
+        let client = OpenRgbClient::connect().await?;
         let group = client.get_all_controllers().await?;
         let split = group.split_per_type();
-        println!("split: {0:?}", split);
         for (device_type, controllers) in split {
             println!("Device type: {device_type:?}");
             for controller in controllers.controllers() {

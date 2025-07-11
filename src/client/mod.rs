@@ -6,19 +6,32 @@ mod command;
 mod group;
 mod segment;
 
-pub use {controller::*, zone::*};
+pub use {
+    controller::*,
+    zone::*,
+    group::*,
+    segment::*,
+    command::*,
+};
 
 use tokio::net::ToSocketAddrs;
 
 use crate::{
-    client::group::ControllerGroup, data::DeviceType, error::OpenRgbResult, protocol::{data::ModeData, OpenRgbProtocol, DEFAULT_ADDR}, Color, OpenRgbError
+    data::DeviceType, error::OpenRgbResult, protocol::{data::ModeData, OpenRgbProtocol, DEFAULT_ADDR}, Color, OpenRgbError, DEFAULT_PROTOCOL
 };
 
-pub struct OpenRgbClientWrapper {
+/// Client for the OpenRGB SDK server that provides methods to interact with OpenRGB.
+///
+/// By default, a connection is opened to the OpenRGB server at `127.0.0.1:6742`, using protocol version 5.
+/// At the time of writing, the latest release (0.9) supports version 4, while the (1.0rc) release supports version 5.0.
+///
+///
+/// # Example
+pub struct OpenRgbClient {
     proto: OpenRgbProtocol,
 }
 
-impl OpenRgbClientWrapper {
+impl OpenRgbClient {
     /// Connect to default OpenRGB server.
     ///
     /// Use [OpenRGB::connect_to] to connect to a specific server.
@@ -37,7 +50,7 @@ impl OpenRgbClientWrapper {
     /// # }
     /// ```
     pub async fn connect() -> OpenRgbResult<Self> {
-        Self::connect_to(DEFAULT_ADDR).await
+        Self::connect_to(DEFAULT_ADDR, DEFAULT_PROTOCOL).await
     }
 
     /// Connect to OpenRGB server at given coordinates.
@@ -61,13 +74,19 @@ impl OpenRgbClientWrapper {
     /// ```
     pub async fn connect_to(
         addr: impl ToSocketAddrs + std::fmt::Debug + Copy,
+        protocol_version: u32,
     ) -> OpenRgbResult<Self> {
-        let client = OpenRgbProtocol::connect_to(addr).await?;
+        let client = OpenRgbProtocol::connect_to(addr, protocol_version).await?;
         Ok(Self { proto: client })
     }
 }
 
-impl OpenRgbClientWrapper {
+impl OpenRgbClient {
+    /// Returns all available OpenRGB controllers as a `ControllerGroup`.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if communication with the OpenRGB SDK server fails.
     pub async fn get_all_controllers(&self) -> OpenRgbResult<ControllerGroup> {
         let count = self.proto.get_controller_count().await? as usize;
         let mut controllers = Vec::with_capacity(count as usize);
@@ -78,6 +97,13 @@ impl OpenRgbClientWrapper {
         Ok(ControllerGroup::new(controllers))
     }
 
+    /// Returns all controllers of a specific type.
+    ///
+    /// Use `ControllerGrou::split_per_type` to get all controllers per type.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if communication with the OpenRGB SDK server fails.
     pub async fn get_controllers_of_type(&self, device_type: DeviceType) -> OpenRgbResult<ControllerGroup> {
         let group = self.get_all_controllers().await?;
         group
@@ -88,6 +114,11 @@ impl OpenRgbClientWrapper {
         )))
     }
 
+    /// Gets a controller by its index.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if communication with the OpenRGB SDK server fails.
     pub async fn get_controller(&self, i: usize) -> OpenRgbResult<Controller> {
         let c_data = self.proto.get_controller(i as u32).await?;
         Ok(Controller::new(i, self.proto.clone(), c_data))
@@ -95,7 +126,8 @@ impl OpenRgbClientWrapper {
 }
 
 // delegation if it would exist
-impl OpenRgbClientWrapper {
+impl OpenRgbClient {
+    /// Returns the protocol version for this client.
     pub fn get_protocol_version(&mut self) -> u32 {
         self.proto.get_protocol_version()
     }
@@ -126,16 +158,5 @@ impl OpenRgbClientWrapper {
 
     pub async fn save_mode(&self, controller_id: u32, mode: ModeData) -> OpenRgbResult<()> {
         self.proto.save_mode(controller_id, &mode).await
-    }
-
-    pub async fn update_zone_leds(
-        &self,
-        controller_id: u32,
-        zone_id: u32,
-        colors: &[Color],
-    ) -> OpenRgbResult<()> {
-        self.proto
-            .update_zone_leds(controller_id, zone_id, colors)
-            .await
     }
 }

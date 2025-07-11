@@ -1,26 +1,55 @@
 use crate::{
-    protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage}, OpenRgbError, OpenRgbResult
+    protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage}, OpenRgbError, OpenRgbResult, ZoneType
 };
 
+/// Data for OpenRGB segments
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SegmentData {
     name: String,
-    seg_type: i32,
+    /// Segment type should be the same as its parent's zone type.
+    ///
+    /// For now it is always `ZoneType::Linear`.
+    seg_type: ZoneType,
     start_idx: u32,
     led_count: u32,
+
+    // Not part of protocol, but set immediately after reading
+    id: usize,
 }
 
 impl SegmentData {
+    pub(crate) fn new(name: String, start_idx: u32, led_count: u32) -> Self {
+        Self {
+            name,
+            seg_type: ZoneType::Linear,
+            start_idx,
+            led_count,
+            id: usize::MAX,
+        }
+    }
+
+    /// Returns the name of this segment.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the number of LEDs in this segment.
     pub fn led_count(&self) -> u32 {
         self.led_count
     }
 
+    /// Returns the offset of this segment in the zone. This is its starting index.
     pub fn offset(&self) -> u32 {
         self.start_idx
+    }
+
+    /// Returns the id of this segment.
+    pub fn id(&self) -> usize {
+        self.id
+    }
+
+    pub(crate) fn set_id(&mut self, id: usize) {
+        self.id = id;
     }
 }
 
@@ -42,6 +71,7 @@ impl DeserFromBuf for SegmentData {
             seg_type,
             start_idx,
             led_count,
+            id: usize::MAX,
         })
     }
 }

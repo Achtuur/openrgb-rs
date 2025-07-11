@@ -76,14 +76,4 @@ mod tests {
         assert_eq!(msg.read_value::<String>()?, "test".to_string());
         Ok(())
     }
-
-    #[tokio::test]
-    async fn test_write_raw_001() -> Result<(), Box<dyn Error>> {
-        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
-        let mut msg = buf
-        .push_value(&RawString("test"))?
-        .to_received_msg();
-
-        Ok(())
-    }
 }

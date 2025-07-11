@@ -27,6 +27,10 @@
 pub use {
     client::*,
     error::{OpenRgbError, OpenRgbResult},
+    data::*,
+};
+
+pub(crate) use {
     protocol::*,
 };
 

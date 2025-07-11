@@ -52,25 +52,6 @@ flags! {
     }
 }
 
-impl DeserFromBuf for FlagSet<ModeFlag> {
-    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
-        let value = buf.read_u32()?;
-        FlagSet::<ModeFlag>::new(value).map_err(|e| {
-            OpenRgbError::ProtocolError(format!(
-                "Received invalid mode flag set: {value} ({e})"
-            ))
-        })
-    }
-}
-
-impl SerToBuf for FlagSet<ModeFlag> {
-    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
-        buf.write_u32(self.bits());
-        Ok(())
-    }
-}
-
-
 /// Direction for [Mode](crate::data::Mode).
 #[derive(Eq, PartialEq, Debug, Copy, Clone, Default)]
 pub enum Direction {
@@ -135,7 +116,7 @@ pub struct ModeData {
     /// Mode name.
     pub name: String,
 
-    /// Mode value.
+    /// Device specific mode value
     pub value: i32,
 
     /// Mode flags set.
@@ -182,11 +163,16 @@ pub struct ModeData {
 
     /// Index of this mode, not part of received packet but set right after reading
     pub index: u32,
-    // for use in self.size() as a workaround to not having the protocol version available there
-    pub protocol_version: u32,
 }
 
 impl ModeData {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Returns the brightness setting of this mode, minimum protocol version: 3.
+    ///
+    /// If protocol version is less than 3 or the mode flags does not include `HasBrightness`, returns `None`.
     pub fn brightness(&self) -> Option<u32> {
         match self.flags.contains(ModeFlag::HasBrightness) {
             true => self.brightness.value().copied(),
@@ -194,12 +180,16 @@ impl ModeData {
         }
     }
 
+    /// Set the brightness setting of this mode, minimum protocol version: 3.
     pub fn set_brightness(&mut self, b: u32) {
         if self.flags.contains(ModeFlag::HasBrightness) {
             self.brightness.replace(b);
         }
     }
 
+    /// Returns the minimum brightness setting of this mode, minimum protocol version: 3.
+    ///
+    /// If protocol version is less than 3 or the mode flags does not include `HasBrightness`, returns `None`.
     pub fn brightness_min(&self) -> Option<u32> {
         match self.flags.contains(ModeFlag::HasBrightness) {
             true => self.brightness_min.value().copied(),
@@ -207,6 +197,9 @@ impl ModeData {
         }
     }
 
+    /// Returns the maximum brightness setting of this mode, minimum protocol version: 3.
+    ///
+    /// If protocol version is less than 3 or the mode flags does not include `HasBrightness`, returns `None`.
     pub fn brightness_max(&self) -> Option<u32> {
         match self.flags.contains(ModeFlag::HasBrightness) {
             true => self.brightness_max.value().copied(),
@@ -214,40 +207,61 @@ impl ModeData {
         }
     }
 
+    /// Returns the speed setting of this mode.
+    ///
+    /// If `ModeFlag::HasSpeed` is not set, returns `None`.
     pub fn speed(&self) -> Option<u32> {
         self.flags.contains(ModeFlag::HasSpeed).then_some(self.speed)
     }
 
+    /// Set the speed setting of this mode.
     pub fn set_speed(&mut self, sp: u32) {
         if self.flags.contains(ModeFlag::HasSpeed) {
             self.speed = sp;
         }
     }
 
+    /// Returns the minimum speed setting of this mode.
+    ///
+    /// If `ModeFlag::HasSpeed` is not set, returns `None`.
     pub fn speed_min(&self) -> Option<u32> {
         self.flags.contains(ModeFlag::HasSpeed).then_some(self.speed_min)
     }
 
+    /// Returns the maximum speed setting of this mode.
+    ///
+    /// If `ModeFlag::HasSpeed` is not set, returns `None`.
     pub fn speed_max(&self) -> Option<u32> {
         self.flags.contains(ModeFlag::HasSpeed).then_some(self.speed_max)
     }
 
+    /// Returns the direction of this mode.
+    ///
+    /// If `ModeFlag::HasDirection` is not set, returns `None`.
     pub fn direction(&self) -> Option<Direction> {
         self.flags.contains(ModeFlag::HasDirection).then_some(self.direction)
     }
 
+    /// Returns the color mode of this mode.
     pub fn color_mode(&self) -> ColorMode {
         self.color_mode
     }
 
+    /// Returns the colors of this mode
     pub fn colors(&self) -> &[Color] {
         &self.colors
     }
 
+    /// Returns the minimum number of colors for this mode.
+    ///
+    /// Returns `None` if the mode does not have any colors.
     pub fn colors_min(&self) -> Option<u32> {
         (!self.colors.is_empty()).then_some(self.colors_min)
     }
 
+    /// Returns the maximum number of colors for this mode.
+    ///
+    /// Returns `None` if the mode does not have any colors.
     pub fn colors_max(&self) -> Option<u32> {
         (!self.colors.is_empty()).then_some(self.colors_max)
     }
@@ -272,7 +286,6 @@ impl DeserFromBuf for ModeData {
 
         Ok(ModeData {
             index: u32::MAX,
-            protocol_version: buf.protocol_version(),
             name,
             value,
             flags,
@@ -293,20 +306,21 @@ impl DeserFromBuf for ModeData {
 
 impl SerToBuf for ModeData {
     fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
-        buf.write_value(&self.name)?;
-        buf.write_value(&self.value)?;
-        buf.write_value(&self.flags)?;
-        buf.write_value(&self.speed_min)?;
-        buf.write_value(&self.speed_max)?;
-        buf.write_value(&self.brightness_min)?;
-        buf.write_value(&self.brightness_max)?;
-        buf.write_value(&self.brightness)?;
-        buf.write_value(&self.colors_min)?;
-        buf.write_value(&self.colors_max)?;
-        buf.write_value(&self.speed)?;
-        buf.write_value(&self.direction)?;
-        buf.write_value(&self.color_mode)?;
-        buf.write_value(&self.colors)?;
+        buf
+        .push_value(&self.name)?
+        .push_value(&self.value)?
+        .push_value(&self.flags)?
+        .push_value(&self.speed_min)?
+        .push_value(&self.speed_max)?
+        .push_value(&self.brightness_min)?
+        .push_value(&self.brightness_max)?
+        .push_value(&self.brightness)?
+        .push_value(&self.colors_min)?
+        .push_value(&self.colors_max)?
+        .push_value(&self.speed)?
+        .push_value(&self.direction)?
+        .push_value(&self.color_mode)?
+        .push_value(&self.colors)?;
         Ok(())
     }
 }
@@ -318,7 +332,7 @@ mod tests {
 
     use flagset::FlagSet;
 
-    use crate::{data::{ColorMode, Direction}, protocol::data::ModeFlag, WriteMessage};
+    use crate::{data::{ColorMode, Direction}, protocol::data::ModeFlag, Color, ModeData, ProtocolOption, WriteMessage};
     use ModeFlag::*;
 
 
@@ -393,239 +407,83 @@ mod tests {
         assert_eq!(msg.read_value::<u32>()?, 3);
         Ok(())
     }
+
+
+    #[test]
+    fn test_read_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(3);
+        let mut msg = buf
+        .push_value(&"test")? // name
+        .push_value(&46_i32)? // value
+        .push_value(&31_u32)? // flags
+        .push_value(&10_u32)? // speed_min
+        .push_value(&1000_u32)? // speed_max
+        .push_value(&1_u32)? // brightness_min
+        .push_value(&1024_u32)? // brightness_max
+        .push_value(&512_u32)? // brightness
+        .push_value(&0_u32)? // colors_min
+        .push_value(&256_u32)? // colors_max
+        .push_value(&51_u32)? // speed
+        .push_value(&4_u32)? // direction
+        .push_value(&1_u32)? // color_mode
+        .push_value(&[
+            Color { r: 37, g: 54, b: 126 },
+            Color { r: 37, g: 54, b: 255 },
+        ])?
+        .to_received_msg();
+
+        let mode_data = msg.read_value::<ModeData>()?;
+
+        assert_eq!(mode_data.name(), "test");
+        assert_eq!(mode_data.speed_min(), Some(10));
+        assert_eq!(mode_data.speed_max(), Some(1000));
+        assert_eq!(mode_data.brightness_min(), Some(1));
+        assert_eq!(mode_data.brightness_max(), Some(1024));
+        assert_eq!(mode_data.colors_min(), Some(0));
+        assert_eq!(mode_data.colors_max(), Some(256));
+        assert_eq!(mode_data.speed(), Some(51));
+        assert_eq!(mode_data.brightness(), Some(512));
+        assert_eq!(mode_data.direction(), Some(Direction::Horizontal));
+        assert_eq!(mode_data.color_mode(), ColorMode::PerLED);
+        assert_eq!(
+            mode_data.colors(),
+            &[
+                Color { r: 37, g: 54, b: 126 },
+                Color { r: 37, g: 54, b: 255 }
+            ]
+        );
+
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_write_001() -> Result<(), Box<dyn Error>> {
+        let mode = ModeData {
+            index: u32::MAX,
+            name: "test".to_string(),
+            value: 46,
+            flags: HasDirection | HasSpeed | HasBrightness,
+            speed_min: 10,
+            speed_max: 1000,
+            brightness_min: ProtocolOption::Some(1),
+            brightness_max: ProtocolOption::Some(231),
+            colors_min: 0,
+            colors_max: 256,
+            speed: 51,
+            brightness: ProtocolOption::Some(50),
+            direction: Direction::Horizontal,
+            color_mode: ColorMode::PerLED,
+            colors: vec![
+                Color { r: 37, g: 54, b: 126 },
+                Color { r: 37, g: 54, b: 255 },
+            ],
+        };
+
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        buf.write_value(&mode)?;
+        let mut msg = buf.to_received_msg();
+        assert_eq!(mode, msg.read_value::<ModeData>()?);
+        Ok(())
+    }
 }
-
-
-// #[cfg(test)]
-// mod tests {
-//     use std::error::Error;
-
-//     use tokio_test::io::Builder;
-
-//     use crate::protocol::data::{Color, ColorMode, Direction, ModeData, ModeFlag::*};
-//     use crate::protocol::tests::setup;
-//     use crate::protocol::{ReadableStream, WritableStream};
-
-//     #[tokio::test]
-//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new()
-//             .read(&5_u16.to_le_bytes()) // name len
-//             .read(b"test\0") // name
-//             .read(&46_i32.to_le_bytes()) // value
-//             .read(&31_u32.to_le_bytes()) // flags
-//             .read(&10_u32.to_le_bytes()) // speed_min
-//             .read(&1000_u32.to_le_bytes()) // speed_max
-//             .read(&1_u32.to_le_bytes()) // brightness_min
-//             .read(&1024_u32.to_le_bytes()) // brightness_max
-//             .read(&0_u32.to_le_bytes()) // colors_min
-//             .read(&256_u32.to_le_bytes()) // colors_max
-//             .read(&51_u32.to_le_bytes()) // speed
-//             .read(&512_u32.to_le_bytes()) // brightness
-//             .read(&4_u32.to_le_bytes()) // direction
-//             .read(&1_u32.to_le_bytes()) // color_mode
-//             .read(&2_u16.to_le_bytes()) // colors len
-//             .read(&[37_u8, 54_u8, 126_u8, 0_u8]) // colors[0]
-//             .read(&[37_u8, 54_u8, 255_u8, 0_u8]) // colors[1]
-//             .build();
-
-//         assert_eq!(
-//             stream.read_value::<ModeData>().await?,
-//             ModeData {
-//                 protocol_version: 4,
-//                 index: u32::MAX,
-//                 name: "test".to_string(),
-//                 value: 46,
-//                 flags: HasDirection | HasSpeed | HasBrightness,
-//                 speed_min: Some(10),
-//                 speed_max: Some(1000),
-//                 brightness_min: Some(1),
-//                 brightness_max: Some(1024),
-//                 colors_min: Some(0),
-//                 colors_max: Some(256),
-//                 speed: Some(51),
-//                 brightness: Some(512),
-//                 direction: Some(Direction::Horizontal),
-//                 color_mode: Some(ColorMode::PerLED),
-//                 colors: vec![
-//                     Color {
-//                         r: 37,
-//                         g: 54,
-//                         b: 126
-//                     },
-//                     Color {
-//                         r: 37,
-//                         g: 54,
-//                         b: 255
-//                     },
-//                 ],
-//             }
-//         );
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_read_002() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new()
-//             .read(&5_u16.to_le_bytes()) // name len
-//             .read(b"test\0") // name
-//             .read(&46_i32.to_le_bytes()) // value
-//             .read(&0_u32.to_le_bytes()) // flags
-//             .read(&10_u32.to_le_bytes()) // speed_min
-//             .read(&1000_u32.to_le_bytes()) // speed_max
-//             .read(&1_u32.to_le_bytes()) // brightness_min
-//             .read(&1024_u32.to_le_bytes()) // brightness_max
-//             .read(&0_u32.to_le_bytes()) // colors_min
-//             .read(&256_u32.to_le_bytes()) // colors_max
-//             .read(&51_u32.to_le_bytes()) // speed
-//             .read(&512_u32.to_le_bytes()) // brightness
-//             .read(&4_u32.to_le_bytes()) // direction
-//             .read(&1_u32.to_le_bytes()) // color_mode
-//             .read(&0_u16.to_le_bytes()) // colors len
-//             .build();
-
-//         assert_eq!(
-//             stream.read_value::<ModeData>().await?,
-//             ModeData {
-//                 protocol_version: 4,
-//                 index: u32::MAX,
-//                 name: "test".to_string(),
-//                 value: 46,
-//                 flags: Default::default(),
-//                 speed_min: None,
-//                 speed_max: None,
-//                 brightness_min: None,
-//                 brightness_max: None,
-//                 colors_min: None,
-//                 colors_max: None,
-//                 speed: None,
-//                 brightness: None,
-//                 direction: None,
-//                 color_mode: Some(ColorMode::PerLED),
-//                 colors: vec![],
-//             }
-//         );
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_read_003() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new()
-//             .read(&5_u16.to_le_bytes()) // name len
-//             .read(b"test\0") // name
-//             .read(&46_i32.to_le_bytes()) // value
-//             .read(&31_u32.to_le_bytes()) // flags
-//             .read(&10_u32.to_le_bytes()) // speed_min
-//             .read(&1000_u32.to_le_bytes()) // speed_max
-//             .read(&0_u32.to_le_bytes()) // colors_min
-//             .read(&256_u32.to_le_bytes()) // colors_max
-//             .read(&51_u32.to_le_bytes()) // speed
-//             .read(&4_u32.to_le_bytes()) // direction
-//             .read(&1_u32.to_le_bytes()) // color_mode
-//             .read(&2_u16.to_le_bytes()) // colors len
-//             .read(&[37_u8, 54_u8, 126_u8, 0_u8]) // colors[0]
-//             .read(&[37_u8, 54_u8, 255_u8, 0_u8]) // colors[1]
-//             .build();
-
-//         assert_eq!(
-//             stream.read_value::<ModeData>().await?,
-//             ModeData {
-//                 protocol_version: 4,
-//                 index: u32::MAX,
-//                 name: "test".to_string(),
-//                 value: 46,
-//                 flags: HasDirection | HasSpeed | HasBrightness,
-//                 speed_min: Some(10),
-//                 speed_max: Some(1000),
-//                 brightness_min: None,
-//                 brightness_max: None,
-//                 colors_min: Some(0),
-//                 colors_max: Some(256),
-//                 speed: Some(51),
-//                 brightness: None,
-//                 direction: Some(Direction::Horizontal),
-//                 color_mode: Some(ColorMode::PerLED),
-//                 colors: vec![
-//                     Color {
-//                         r: 37,
-//                         g: 54,
-//                         b: 126
-//                     },
-//                     Color {
-//                         r: 37,
-//                         g: 54,
-//                         b: 255
-//                     },
-//                 ],
-//             }
-//         );
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new()
-//             .write(&5_u16.to_le_bytes()) // name len
-//             .write(b"test\0") // name
-//             .write(&46_i32.to_le_bytes()) // value
-//             .write(&31_u32.to_le_bytes()) // flags
-//             .write(&10_u32.to_le_bytes()) // speed_min
-//             .write(&1000_u32.to_le_bytes()) // speed_max
-//             .write(&1_u32.to_le_bytes()) // brightness_min
-//             .write(&1024_u32.to_le_bytes()) // brightness_max
-//             .write(&0_u32.to_le_bytes()) // colors_min
-//             .write(&256_u32.to_le_bytes()) // colors_max
-//             .write(&51_u32.to_le_bytes()) // speed
-//             .write(&512_u32.to_le_bytes()) // brightness
-//             .write(&4_u32.to_le_bytes()) // direction
-//             .write(&1_u32.to_le_bytes()) // color_mode
-//             .write(&2_u16.to_le_bytes()) // colors len
-//             .write(&[37_u8, 54_u8, 126_u8, 0_u8]) // colors[0]
-//             .write(&[37_u8, 54_u8, 255_u8, 0_u8]) // colors[1]
-//             .build();
-
-//         stream
-//             .write_value(&ModeData {
-//                 protocol_version: 4,
-//                 index: u32::MAX,
-//                 name: "test".to_string(),
-//                 value: 46,
-//                 flags: HasDirection | HasSpeed | HasBrightness,
-//                 speed_min: Some(10),
-//                 speed_max: Some(1000),
-//                 brightness_min: Some(1),
-//                 brightness_max: Some(1024),
-//                 colors_min: Some(0),
-//                 colors_max: Some(256),
-//                 speed: Some(51),
-//                 brightness: Some(512),
-//                 direction: Some(Direction::Horizontal),
-//                 color_mode: Some(ColorMode::PerLED),
-//                 colors: vec![
-//                     Color {
-//                         r: 37,
-//                         g: 54,
-//                         b: 126,
-//                     },
-//                     Color {
-//                         r: 37,
-//                         g: 54,
-//                         b: 255,
-//                     },
-//                 ],
-//             })
-//             .await?;
-
-//         Ok(())
-//     }
-// }

@@ -8,7 +8,9 @@ use crate::{protocol::serialize::{DeserFromBuf, ReceivedMessage}, SerToBuf, Writ
 /// Useful when determining sizes of data structures that contains fields that may not be supported by the current protocol version.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ProtocolOption<const VER: usize, T> {
+    /// Value is supported by the current protocol version.
     Some(T),
+    /// Value is not supported by the current protocol version.
     UnsupportedVersion,
 }
 
@@ -28,6 +30,7 @@ impl<const VER: usize, T> From<ProtocolOption<VER, T>> for Option<T> {
 }
 
 impl<const VER: usize, T> ProtocolOption<VER, T> {
+    /// Creates a new `ProtocolOption` with the given value if the protocol version is supported.
     pub fn new(val: T, version: usize) -> Self {
         if version < VER {
             return Self::UnsupportedVersion;
@@ -35,10 +38,7 @@ impl<const VER: usize, T> ProtocolOption<VER, T> {
         Self::Some(val)
     }
 
-    pub fn some(val: T) -> Self {
-        Self::Some(val)
-    }
-
+    /// Replaces the value in this `ProtocolOption`
     pub fn replace(&mut self, val: T) {
         match self {
             Self::Some(_) => *self = Self::Some(val),
@@ -46,7 +46,16 @@ impl<const VER: usize, T> ProtocolOption<VER, T> {
         }
     }
 
+    /// Returns `Some(&T)` if the value is supported by the current protocol version, otherwise `None`.
     pub fn value(&self) -> Option<&T> {
+        match self {
+            Self::Some(v) => Some(v),
+            Self::UnsupportedVersion => None,
+        }
+    }
+
+    /// Returns `Some(&mut T)` if the value is supported by the current protocol version, otherwise `None`.
+    pub fn value_mut(&mut self) -> Option<&mut T> {
         match self {
             Self::Some(v) => Some(v),
             Self::UnsupportedVersion => None,

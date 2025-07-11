@@ -6,5 +6,6 @@ mod slice;
 mod string;
 mod tuple;
 mod vec;
+mod flags;
 
 pub(crate) use string::*;

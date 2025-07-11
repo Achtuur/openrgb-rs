@@ -2,29 +2,51 @@ use std::collections::HashMap;
 
 use crate::{client::group::{ControllerGroup, ControllerIndex}, Color, Controller, OpenRgbError, OpenRgbResult};
 
+/// The different type of LED updates that are possible
+///
+/// For use with `UpdateLedCommand` and `UpdateLedCommandGroup`.
 pub enum UpdateCommand {
+    /// Update LEDs in a controller
     Controller {
+        /// The ID of the controller
         controller_id: usize,
+        /// The colors to set
         colors: Vec<Color>,
     },
+    /// Update LEDs in a zone in a controller
     Zone {
+        /// The ID of the controller
         controller_id: usize,
+        /// The ID of the zone
         zone_id: usize,
+        /// The colors to set in the zone
         colors: Vec<Color>,
     },
+    /// Update LEDs in a segment in a zone in a controller
     Segment {
+        /// The ID of the controller
         controller_id: usize,
+        /// The ID of the zone
         zone_id: usize,
+        /// The ID of the segment
         segment_id: usize,
+        /// The colors to set in the segment
         colors: Vec<Color>,
     },
+    /// Update a single LED in a controller
     Single {
+        /// The ID of the controller
         controller_id: usize,
+        /// LED index in the controller
         led_id: usize,
+        /// The color to set the LED to
         color: Color,
     }
 }
 
+/// An `UpdateLedCommand` for a `ControllerGroup`, which allow you to update multiple controllers.
+///
+/// This is useful when doing updates for multiple controllers at once.
 pub struct UpdateLedCommandGroup<'a> {
     group: &'a ControllerGroup,
     commands: HashMap<usize, UpdateLedCommand<'a>>,
@@ -42,6 +64,7 @@ impl<'a> UpdateLedCommandGroup<'a> {
         }
     }
 
+    /// Executes all commands in this group one after another.
     pub async fn execute(self) -> OpenRgbResult<()> {
         for cmd in self.commands.into_values() {
             cmd.execute().await?;
@@ -58,28 +81,64 @@ impl<'a> UpdateLedCommandGroup<'a> {
             )))
     }
 
+    /// Add a command to update a single LED in a controller.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the controller is not found in this group.
     pub fn add_update_led(&mut self, controller_id: impl ControllerIndex, led_id: usize, color: Color) -> OpenRgbResult<()> {
         let cmd = self.get_controller_mut(controller_id)?;
-        cmd.add_update_led(led_id, color)
+        cmd.add_set_led(led_id, color)
     }
 
+    /// Add a command to update a multiple LEDs in a controller
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the controller is not found in this group.
     pub fn add_update_controller_leds(&mut self, controller_id: impl ControllerIndex, colors: Vec<Color>) -> OpenRgbResult<()> {
         let cmd = self.get_controller_mut(controller_id)?;
-        cmd.add_update_all_leds(colors)
+        cmd.add_set_leds(colors)
     }
 
+    /// Add a command to update a zone in a controller.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the controller is not found in this group.
     pub fn add_update_zone(&mut self, controller_id: impl ControllerIndex, zone_id: usize, colors: Vec<Color>) -> OpenRgbResult<()> {
         let cmd = self.get_controller_mut(controller_id)?;
-        cmd.add_update_zone(zone_id, colors)
+        cmd.add_set_zone_leds(zone_id, colors)
     }
 
+    /// Add a command to update a single LED in a zone in a controller.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the controller is not found in this group.
+    pub fn add_update_zone_led(&mut self, controller_id: impl ControllerIndex, zone_id: usize, led_idx: usize, color: Color) -> OpenRgbResult<()> {
+        let cmd = self.get_controller_mut(controller_id)?;
+        cmd.add_set_zone_led(zone_id, led_idx, color)
+    }
+
+    /// Add a command to update a segment in a zone in a controller.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the controller is not found in this group.
     pub fn add_update_segment(&mut self, controller_id: impl ControllerIndex, zone_id: usize, segment_id: usize, colors: Vec<Color>) -> OpenRgbResult<()> {
         let cmd = self.get_controller_mut(controller_id)?;
-        cmd.add_update_segment(zone_id, segment_id, colors)
+        cmd.add_set_segment_leds(zone_id, segment_id, colors)
     }
 }
 
 
+/// A command to update the LEDs in a controller.
+///
+/// When executed, all commands are combined into a single `UpdateCommand::Controller`,
+/// meaning only a single update is actually sent to the controller.
+///
+/// When two commands write to the same LED, the last command will overwrite the previous one.
 #[derive(Debug)]
 pub struct UpdateLedCommand<'a> {
     controller: &'a Controller,
@@ -94,45 +153,16 @@ impl<'a> UpdateLedCommand<'a> {
         }
     }
 
-    pub(crate) fn into_colors(self) -> Vec<Color> {
-        self.colors
-    }
 
-    pub(crate) fn colors(&self) -> &[Color] {
-        &self.colors
-    }
-
+    /// Executes this command, sending the update to the controller.
     pub async fn execute(self) -> OpenRgbResult<()> {
-        self.controller.update_leds(self.colors).await?;
+        self.controller.set_leds(self.colors).await?;
         // self.controller.sync_controller_data().await?;
         Ok(())
     }
 
-    #[inline(always)]
-    pub fn push_update_led(&mut self, led_id: usize, color: Color) -> OpenRgbResult<&mut Self> {
-        self.add_update_led(led_id, color)?;
-        Ok(self)
-    }
-
-    #[inline(always)]
-    pub fn push_update_all_leds(&mut self, colors: Vec<Color>) -> OpenRgbResult<&mut Self> {
-        self.add_update_all_leds(colors)?;
-        Ok(self)
-    }
-
-    #[inline(always)]
-    pub fn push_update_zone(&mut self, zone_id: usize, colors: Vec<Color>) -> OpenRgbResult<&mut Self> {
-        self.add_update_zone(zone_id, colors)?;
-        Ok(self)
-    }
-
-    #[inline(always)]
-    pub fn push_update_segment(&mut self, zone_id: usize, segment_id: usize, colors: Vec<Color>) -> OpenRgbResult<&mut Self> {
-        self.add_update_segment(zone_id, segment_id, colors)?;
-        Ok(self)
-    }
-
-    pub fn add_update_led(&mut self, led_id: usize, color: Color) -> OpenRgbResult<()> {
+    /// Adds a command to update a single LED in this controller.
+    pub fn add_set_led(&mut self, led_id: usize, color: Color) -> OpenRgbResult<()> {
         self.add_command(UpdateCommand::Single {
             controller_id: self.controller.id(),
             led_id,
@@ -140,14 +170,25 @@ impl<'a> UpdateLedCommand<'a> {
         })
     }
 
-    pub fn add_update_all_leds(&mut self, colors: Vec<Color>) -> OpenRgbResult<()> {
+    /// Adds a command to update multiple LEDs in this controller.
+    pub fn add_set_leds(&mut self, colors: Vec<Color>) -> OpenRgbResult<()> {
         self.add_command(UpdateCommand::Controller {
             controller_id: self.controller.id(),
             colors
         })
     }
 
-    pub fn add_update_zone(&mut self, zone_id: usize, colors: Vec<Color>) -> OpenRgbResult<()> {
+    /// Adds a command to update a single LED in a zone in this controller.
+    pub fn add_set_zone_led(&mut self, zone_id: usize, led_idx: usize, color: Color) -> OpenRgbResult<()> {
+        self.add_command(UpdateCommand::Single {
+            controller_id: self.controller.id(),
+            led_id: self.controller.get_zone_led_offset(zone_id)? + led_idx,
+            color
+        })
+    }
+
+    /// Adds a command to update multiple LEDs in a zone in this controller.
+    pub fn add_set_zone_leds(&mut self, zone_id: usize, colors: Vec<Color>) -> OpenRgbResult<()> {
         self.add_command(UpdateCommand::Zone {
             controller_id: self.controller.id(),
             zone_id,
@@ -155,7 +196,21 @@ impl<'a> UpdateLedCommand<'a> {
         })
     }
 
-    pub fn add_update_segment(&mut self, zone_id: usize, segment_id: usize, colors: Vec<Color>) -> OpenRgbResult<()> {
+    /// Adds a command to update a single led in a segment in a zone in this controller.
+    pub fn add_set_segment_led(&mut self, zone_id: usize, segment_id: usize, led_idx: usize, color: Color) -> OpenRgbResult<()> {
+        let led_id = led_idx + self.controller
+        .get_zone(zone_id)?
+        .get_segment(segment_id)?
+        .offset();
+        self.add_command(UpdateCommand::Single {
+            controller_id: self.controller.id(),
+            led_id,
+            color,
+        })
+    }
+
+    /// Adds a command to update multiple LEDs in a segment in a zone in this controller.
+    pub fn add_set_segment_leds(&mut self, zone_id: usize, segment_id: usize, colors: Vec<Color>) -> OpenRgbResult<()> {
         self.add_command(UpdateCommand::Segment {
             controller_id: self.controller.id(),
             zone_id,
@@ -164,6 +219,7 @@ impl<'a> UpdateLedCommand<'a> {
         })
     }
 
+    /// Extend this command with multiple other `UpdateCommand`s.
     pub fn extend_with(&mut self, commands: impl IntoIterator<Item = UpdateCommand>) -> OpenRgbResult<&mut Self> {
         for cmd in commands {
             self.add_command(cmd)?;
@@ -171,12 +227,7 @@ impl<'a> UpdateLedCommand<'a> {
         Ok(self)
     }
 
-    #[inline(always)]
-    pub fn push_command(&mut self, cmd: UpdateCommand) -> OpenRgbResult<&mut Self> {
-        self.add_command(cmd)?;
-        Ok(self)
-    }
-
+    /// Adds an `UpdateCommand` to this command.
     pub fn add_command(&mut self, cmd: UpdateCommand) -> OpenRgbResult<()> {
         match cmd {
             UpdateCommand::Controller { controller_id, colors } => {
@@ -240,19 +291,5 @@ impl<'a> UpdateLedCommand<'a> {
         }
         self.colors[offset..len].copy_from_slice(colors);
         Ok(())
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_copy_from_slice_without_alloc() {
-        let mut vec = Vec::with_capacity(8);
-        vec.resize(4, 0);
-        vec[0..4].copy_from_slice(&[1, 2, 3, 4]);
-        println!("vec: {0:?}", vec);
     }
 }

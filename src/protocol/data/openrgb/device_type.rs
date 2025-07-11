@@ -59,7 +59,7 @@ impl_enum_discriminant!(DeviceType,
 mod tests {
     use std::error::Error;
 
-    use crate::{data::DeviceType, protocol::data::ColorMode, WriteMessage};
+    use crate::{data::DeviceType, WriteMessage};
 
     #[tokio::test]
     async fn test_read_001() -> Result<(), Box<dyn Error>> {

@@ -1,18 +1,17 @@
 use std::error::Error;
 
-use openrgb::{Color, OpenRgbClientWrapper};
+use openrgb::{OpenRgbClient, OpenRgbResult};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> OpenRgbResult<()> {
     // connect to local server
-    let client = OpenRgbClientWrapper::connect().await?;
+    let client = OpenRgbClient::connect().await?;
 
     let controllers = client.get_all_controllers().await?;
     for c in controllers {
-        println!("controller {}: {:#?}", c.id(), c.name(),);
-        c.set_controllable_mode().await?;
-        c.update_all_leds(Color::new(255, 0, 255))
-        .await?;
+        println!("controller {}: {:#?}", c.id(), c.name());
+        // the LEDs should now be a rainbow
+        c.init().await?;
     }
 
     Ok(())

@@ -7,6 +7,10 @@ use crate::{
 
 use super::Zone;
 
+/// An RGBController, which represents a single RGB device that can be controlled.
+///
+/// # Example
+/// todo
 pub struct Controller {
     id: usize,
     proto: OpenRgbProtocol,
@@ -29,30 +33,71 @@ impl Controller {
         Self { id, proto, data }
     }
 
-    /// Connects to the OpenRGB server with a new client.
-    ///
-    /// This can be done to give each device its own connection.
-    pub async fn connect_new_client(&mut self) -> OpenRgbResult<()> {
-        let new_proto = self.proto.connect_clone().await?;
-        new_proto.set_name(&self.data().name).await?;
-        self.proto = new_proto;
-        Ok(())
+    pub(crate) fn proto(&self) -> &OpenRgbProtocol {
+        &self.proto
     }
 
+    /// Returns the ID of this controller.
     pub fn id(&self) -> usize {
         self.id
     }
 
+    /// Returns the name of this controller.
     pub fn name(&self) -> &str {
         &self.data.name
     }
 
+    /// Returns the protocol version of this controller.
     pub fn data(&self) -> &ControllerData {
         &self.data
     }
 
+    /// Returns the number of LEDs in this controller.
     pub fn num_leds(&self) -> usize {
         self.data.num_leds
+    }
+
+    /// Initialises a controller by setting it to a controllable mode.
+    /// This function also changes the LEDs to a rainbow, so you can see if it worked.
+    pub async fn init(&self) -> OpenRgbResult<()> {
+        self.set_controllable_mode().await?;
+        const RAINBOW_COLORS: [Color; 7] = [
+            Color::new(255, 0, 0),   // Red
+            Color::new(255, 127, 0), // Orange
+            Color::new(255, 255, 0), // Yellow
+            Color::new(0, 255, 0),   // Green
+            Color::new(0, 0, 255),   // Blue
+            Color::new(75, 0, 130),  // Indigo
+            Color::new(148, 0, 211)   // Violet
+        ];
+        let colors = (0..self.num_leds())
+        .map(|i| {
+            i * RAINBOW_COLORS.len() / self.num_leds()
+        })
+        .map(|i| RAINBOW_COLORS[i]);
+        self.set_leds(colors).await?;
+        Ok(())
+    }
+
+    /// Saves the current mode of this controller to the flash memory of the controller.
+    ///
+    /// # Important
+    ///
+    /// Using this frequently can cause wear on the flash memory, use this sparingly.
+    pub async fn save_mode(&self) -> OpenRgbResult<()> {
+        let Some(active_mode) = self.data.active_mode() else {
+            return Err(OpenRgbError::CommandError(format!(
+                "Controller {} has no active mode",
+                self.name()
+            )));
+        };
+        if !active_mode.flags.contains(ModeFlag::ManualSave) {
+            return Err(OpenRgbError::CommandError(format!(
+                "Controller {} mode {} cannot be saved",
+                self.name(), active_mode.name
+            )))
+        }
+        self.proto.save_mode(self.id as u32, active_mode).await
     }
 
     /// Sets this controller to a controllable mode.
@@ -83,18 +128,6 @@ impl Controller {
         self.proto.save_mode(self.id as u32, &mode).await
     }
 
-    pub async fn set_disabled_mode(&self) -> OpenRgbResult<()> {
-        // order: "disabled", "off"
-        let mode = self
-            .get_mode_if_contains("disabled")
-            .or(self.get_mode_if_contains("off"))
-            .ok_or(OpenRgbError::ProtocolError(
-                "No disabled mode found".to_string(),
-            ))?;
-
-        self.proto.update_mode(self.id as u32, mode).await
-    }
-
     fn get_mode_if_contains(&self, pat: &str) -> Option<&ModeData> {
         self.data()
             .modes
@@ -102,6 +135,7 @@ impl Controller {
             .find(|m| m.name.to_ascii_lowercase().contains(pat))
     }
 
+    /// Returns the zone with the given `zone_id`.
     pub fn get_zone<'a>(&'a self, zone_id: usize) -> OpenRgbResult<Zone<'a>> {
         if self.data.zones.get(zone_id).is_none() {
             return Err(OpenRgbError::CommandError(format!(
@@ -112,72 +146,85 @@ impl Controller {
         Ok(zone)
     }
 
-    pub async fn update_led(&self, led: i32, color: Color) -> OpenRgbResult<()> {
-        self.proto.update_led(self.id as u32, led, &color).await
+    /// Returns an iterator over all available zones in this controller.
+    pub fn get_all_zones<'a>(&'a self) -> impl Iterator<Item = Zone<'a>> {
+        self.data.zones
+        .iter()
+        .map(|z| Zone::new(self, z.id as usize))
     }
 
-    pub async fn update_all_leds(&self, color: Color) -> OpenRgbResult<()> {
+    /// Sets a single LED to the given `color`.
+    ///
+    /// When doing many writes in rapid succession, it is recommended to use the `cmd()` method instead.
+    pub async fn set_led(&self, led: usize, color: Color) -> OpenRgbResult<()> {
+        self.proto.update_led(self.id as u32, led as i32, &color).await
+    }
+
+    /// Sets all LEDs of this controller to a given `color`.
+    pub async fn set_all_leds(&self, color: Color) -> OpenRgbResult<()> {
         let colors = vec![color; self.num_leds()];
-        self.update_leds(colors).await?;
+        self.set_leds(colors).await?;
         Ok(())
     }
 
-    pub async fn update_leds(&self, colors: impl IntoIterator<Item = Color>) -> OpenRgbResult<()> {
+    /// Sets the LEDs of this controller to the given `colors`.
+    pub async fn set_leds(&self, colors: impl IntoIterator<Item = Color>) -> OpenRgbResult<()> {
         let color_v = colors.into_iter().collect::<Vec<_>>();
         self.proto.update_leds(self.id as u32, color_v.as_slice()).await
     }
 
-    pub async fn update_zone(&self, zone_id: usize, colors: &[Color]) -> OpenRgbResult<()> {
-        self.proto.update_zone_leds(self.id as u32, zone_id as u32, colors).await
+    /// Sets the LEDs of a specific zone to the given `colors`.
+    pub async fn set_zone_leds(&self, zone_id: usize, colors: impl IntoIterator<Item = Color>) -> OpenRgbResult<()> {
+        let color_v = colors.into_iter().collect::<Vec<_>>();
+        self.proto.update_zone_leds(self.id as u32, zone_id as u32, &color_v).await
     }
 
-    /// Updates multiple zones with their respective colors.
-    ///
-    /// # Important
-    ///
-    /// The zone id's and colors MUST BE IN ORDER
-    ///
-    /// Pads the colors with black if the number of colors is less than the number of LEDs in the zone.
-    pub async fn update_multiple_zones(&self, zone_colors: impl IntoIterator<Item = (usize, impl IntoIterator<Item = Color>)>) -> OpenRgbResult<()> {
-        let mut zone_id_iter = 0..self.data().zones.len();
-        let colors = zone_colors
-        .into_iter()
-        .filter_map(|(z_id, colors)| {
-            // add padding for all zones up to this zone
-            let mut colors_up_til_this_zone = Vec::new();
-            for id in zone_id_iter.by_ref() {
-                if id == z_id {
-                    break; // found the zone
-                }
-                let padding = vec![Color::default(); self.data().zones[id].leds_count as usize];
-                colors_up_til_this_zone.extend(padding);
-            }
-
-            let zone = self.get_zone(z_id).ok()?;
-            let c = zone.zone_colors_from_iter(colors);
-            colors_up_til_this_zone.extend(c);
-            Some(colors_up_til_this_zone)
-        })
-        .flatten();
-        self.update_leds(colors).await
+    /// Clears all segments of this controller.
+    pub async fn clear_segments(&self) -> OpenRgbResult<()> {
+        self.proto.clear_segments(self.id as u32).await
     }
 
-    pub async fn disable_all_leds(&self) -> OpenRgbResult<()> {
+    /// Turns off all LEDs of this controller.
+    pub async fn turn_off_leds(&self) -> OpenRgbResult<()> {
         self.set_controllable_mode().await?;
-        self.update_all_leds(Color {r: 0, g: 0, b: 0}).await
+        self.set_all_leds(Color {r: 0, g: 0, b: 0}).await
     }
 
+    /// Creates an `UpdateLedCommand` for this controller.
+    ///
+    /// Controller LEDs can be updated in three ways:
+    ///  * per led: `self.set_led()`
+    ///  * per zone: `self.set_zone_leds()`
+    ///  * all at once: `self.set_leds()`
+    ///
+    /// From my testing, the most efficient way is to always update all LEDs at once.
+    /// The `UpdateLedCommand` API lets you build a command using updates to individual LEDs, zones or segments
+    /// and then executes them as a single `set_led()` call.
+    ///
+    /// # Example
+    /// ```no_run
+    /// // let's say we have a controller with 5 LEDs
+    /// let mut client = OpenRgbClient::connect().await?;
+    /// let controller = client.get_controller(0).await?;
+    ///
+    /// // direct write
+    /// controller.set_leds([Color::new(255, 0, 0); 5)]).await?;
+    ///
+    /// // equivalent with command
+    /// let mut cmd = controller.cmd();
+    /// cmd.add_update_led(0, Color::new(255, 0, 0))?;
+    /// cmd.add_update_led(2, Color::new(255, 0, 0))?; // order doesn't matter
+    /// cmd.add_update_led(4, Color::new(255, 0, 0))?;
+    /// cmd.add_update_led(1, Color::new(255, 0, 0))?;
+    /// cmd.add_update_led(5, Color::new(255, 0, 0))?;
+    /// // this is just a single update
+    /// cmd.execute().await?;
+    /// ```
+    ///
+    /// This is especially useful for devices with multiple zones that should animate separately.
     pub fn cmd(&self) -> UpdateLedCommand<'_> {
         UpdateLedCommand::new(self)
     }
-
-    pub async fn execute_command(&mut self, cmd: UpdateLedCommand<'_>) -> OpenRgbResult<()> {
-        let colors = cmd.into_colors();
-        self.proto.update_leds(self.id() as u32, &colors).await?;
-        self.sync_controller_data().await?;
-        Ok(())
-    }
-
 
     pub(crate) fn get_zone_led_offset(&self, zone_id: usize) -> OpenRgbResult<usize> {
         if zone_id >= self.data.zones.len() {
@@ -194,10 +241,10 @@ impl Controller {
         Ok(offset)
     }
 
-    /// Fetches controller data again.
+    /// Fetches controller data again. This updates the state of the controller data.
     ///
-    /// This is needed to sync the colors, so we keep colors the same as much as possible.
-    pub(crate) async fn sync_controller_data(&mut self) -> OpenRgbResult<()> {
+    /// Currently this has to be called manually.
+    pub async fn sync_controller_data(&mut self) -> OpenRgbResult<()> {
         let data = self.proto.get_controller(self.id as u32).await?;
         self.data = data;
         Ok(())
@@ -209,40 +256,40 @@ impl Controller {
 mod tests {
     use tracing_test::traced_test;
 
-    use crate::{client::controller, OpenRgbClientWrapper};
+    use crate::{client::controller, OpenRgbClient};
 
     use super::*;
 
     #[tokio::test]
     async fn test_perf() -> OpenRgbResult<()> {
-        let mut client = OpenRgbClientWrapper::connect().await?;
+        let client = OpenRgbClient::connect().await?;
         const C: Color = Color { r: 255, g: 0, b: 0 };
         const N: usize = 100;
 
         let mut controller = client.get_controller(5).await?;
         let timer = std::time::Instant::now();
         for _ in 0..N {
-            controller.update_led(0, C).await?;
+            controller.set_led(0, C).await?;
             controller = client.get_controller(5).await?;
         }
-        println!("{:?} ms", 1000.0 * timer.elapsed().as_secs_f64() / N as f64);
-        // let timer = std::time::Instant::now();
-        // for _ in 0..N {
-        //     controller.update_led(0, C).await?;
-        // }
-        // println!("single {:?}", timer.elapsed().as_secs_f64() / N as f64);
+        println!("{:?}", timer.elapsed());
+        let timer = std::time::Instant::now();
+        for _ in 0..N {
+            controller.set_led(0, C).await?;
+        }
+        println!("single {:?}", timer.elapsed());
 
-        // let timer = std::time::Instant::now();
-        // for _ in 0..N {
-        //     controller.update_leds([C; 20]).await?;
-        // }
-        // println!("all: {:?}", timer.elapsed());
+        let timer = std::time::Instant::now();
+        for _ in 0..N {
+            controller.set_leds([C; 1]).await?;
+        }
+        println!("all: {:?}", timer.elapsed());
 
-        // let timer = std::time::Instant::now();
-        // for _ in 0..N {
-        //     controller.update_zone(0, &[C; 20]).await?;
-        // }
-        // println!("zone: {:?}", timer.elapsed());
+        let timer = std::time::Instant::now();
+        for _ in 0..N {
+            controller.set_zone_leds(0, [C; 1]).await?;
+        }
+        println!("zone: {:?}", timer.elapsed());
 
 
         Ok(())
@@ -251,38 +298,27 @@ mod tests {
     #[tokio::test]
     #[ignore = "Requires real OpenRGB server and human observer"]
     async fn test_update_leds() -> OpenRgbResult<()> {
-        let mut client = OpenRgbClientWrapper::connect().await?;
+        let mut client = OpenRgbClient::connect().await?;
         let mut controller = client.get_controller(5).await?;
         controller.set_controllable_mode().await?;
-        controller.update_leds([Color::new(255, 0, 50); 96]).await?;
+        controller.set_leds([Color::new(255, 0, 50); 96]).await?;
         Ok(())
     }
 
     #[tokio::test]
-    #[traced_test(INFO)]
+    #[traced_test]
     async fn test_cmd() -> OpenRgbResult<()> {
-        let mut client = OpenRgbClientWrapper::connect().await?;
-        let mut controller = client.get_controller(5).await?;
+        let client = OpenRgbClient::connect().await?;
+        let controller = client.get_controller(5).await?;
+        println!("controller.data(): {0:?}", controller.data().colors);
         controller.set_controllable_mode().await?;
         let mut cmd = controller.cmd();
-        cmd.add_update_led(19, Color::new(255, 0, 255))?;
-        cmd.add_update_zone(0, vec![Color::new(255, 255, 0); 19])?;
-        cmd.add_update_zone(1, vec![Color::new(0, 255, 255); 75])?;
+        cmd.add_set_led(19, Color::new(255, 0, 255))?;
+        cmd.add_set_zone_leds(0, vec![Color::new(255, 255, 0); 19])?;
+        cmd.add_set_zone_leds(1, vec![Color::new(0, 255, 255); 75])?;
         println!("cmd: {0:?}", cmd);
+        // controller.execute_command(cmd).await?;
         cmd.execute().await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_offset() -> OpenRgbResult<()> {
-        let mut client = OpenRgbClientWrapper::connect().await?;
-        let controller = client.get_controller(5).await?;
-        let offset = controller.get_zone_led_offset(0)?;
-        assert_eq!(offset, 0);
-        let offset = controller.get_zone_led_offset(1)?;
-        assert_eq!(offset, 20);
-        let offset = controller.get_zone_led_offset(2)?;
-        assert_eq!(offset, 20 + 70);
         Ok(())
     }
 }

@@ -8,7 +8,7 @@ mod openrgb;
 mod protocol_option;
 
 pub use color::*;
-pub use implement::*;
+pub(crate) use implement::*;
 pub use openrgb::*;
 pub use protocol_option::*;
 

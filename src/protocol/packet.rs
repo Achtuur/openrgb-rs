@@ -6,7 +6,7 @@ use crate::impl_enum_discriminant;
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#packet-ids) for more information.
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub enum PacketId {
+pub(crate) enum PacketId {
     /// Request RGBController device count from server.
     RequestControllerCount = 0,
 
@@ -22,25 +22,34 @@ pub enum PacketId {
     /// Indicate to clients that device list has updated.
     DeviceListUpdated = 100,
 
-    /// Request profile list.
+    /// Request a device rescan. (Protocol 5)
+    RequestDeviceRescan = 140,
+
+    /// Request profile list. (Protocol 2)
     RequestProfileList = 150,
 
-    /// Save current configuration in a new profile.
+    /// Save current configuration in a new profile. (Protocol 2)
     RequestSaveProfile = 151,
 
-    /// Load a given profile.
+    /// Load a given profile. (Protocol 2)
     RequestLoadProfile = 152,
 
-    /// Delete a given profile.
+    /// Delete a given profile. (Protocol 2)
     RequestDeleteProfile = 153,
+
+    /// Request list of plugins. (Protocol 4)
+    RequestPluginList = 200,
+
+    /// Plugin specific request. (Protocol 4)
+    PluginSpecific = 201,
 
     /// RGBController::ResizeZone().
     RGBControllerResizeZone = 1000,
 
-    /// RGBController::ClearSegments().
+    /// RGBController::ClearSegments(). (Protocol 5)
     RgbControllerClearSegments = 1001,
 
-    /// RGBController::AddSegment().
+    /// RGBController::AddSegment(). (Protocol 5)
     RGBControllerAddSegment = 1002,
 
     /// RGBController::UpdateLEDs().
@@ -58,7 +67,7 @@ pub enum PacketId {
     /// RGBController::UpdateMode().
     RGBControllerUpdateMode = 1101,
 
-    /// RGBController::SaveMode().
+    /// RGBController::SaveMode(). (Protocol 3)
     RGBControllerSaveMode = 1102,
 }
 
@@ -69,10 +78,13 @@ impl_enum_discriminant!(
     RequestProtocolVersion: 40,
     SetClientName: 50,
     DeviceListUpdated: 100,
+    RequestDeviceRescan: 140,
     RequestProfileList: 150,
     RequestSaveProfile: 151,
     RequestLoadProfile: 152,
     RequestDeleteProfile: 153,
+    RequestPluginList: 200,
+    PluginSpecific: 201,
     RGBControllerResizeZone: 1000,
     RgbControllerClearSegments: 1001,
     RGBControllerAddSegment: 1002,
@@ -84,48 +96,30 @@ impl_enum_discriminant!(
     RGBControllerSaveMode: 1102
 );
 
-// #[cfg(test)]
-// mod tests {
-//     use std::error::Error;
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
 
-//     use tokio_test::io::Builder;
+    use crate::{PacketId, WriteMessage};
 
-//     use crate::protocol::{PacketId, tests::setup};
+    #[tokio::test]
+    async fn test_read_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&152_u32)?
+            .to_received_msg();
 
-//     #[test]
-//     fn test_convert_to_u32() {
-//         assert_eq!(PacketId::DeviceListUpdated.to_u32(), Some(100));
-//     }
+        assert_eq!(msg.read_value::<PacketId>()?, PacketId::RequestLoadProfile);
+        Ok(())
+    }
 
-//     #[test]
-//     fn test_convert_from_u32() {
-//         assert_eq!(PacketId::from_u32(100), Some(PacketId::DeviceListUpdated))
-//     }
-
-//     #[tokio::test]
-//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().read(&1101_u32.to_le_bytes()).build();
-
-//         assert_eq!(
-//             stream.read_value::<PacketId>().await?,
-//             PacketId::RGBControllerUpdateMode
-//         );
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().write(&1101_u32.to_le_bytes()).build();
-
-//         stream
-//             .write_value(&PacketId::RGBControllerUpdateMode)
-//             .await?;
-
-//         Ok(())
-//     }
-// }
+    #[tokio::test]
+    async fn test_write_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&PacketId::RequestLoadProfile)?
+            .to_received_msg();
+        assert_eq!(msg.read_value::<u32>()?, 152);
+        Ok(())
+    }
+}

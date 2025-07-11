@@ -36,7 +36,6 @@ impl_tuple!(0 A, 1 B, 2 C, 3 D, 4 E);
 mod tests {
     use std::error::Error;
 
-    use tokio_test::io::Builder;
 
     use crate::protocol::data::DeviceType;
     use crate::WriteMessage;

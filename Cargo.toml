@@ -14,16 +14,16 @@ categories = ["network-programming", "game-development"]
 
 [dependencies]
 array2d = "0.3.2"
-async-trait = "0.1.53"
-flagset = "0.4.3"
-rgb = "0.8.32"
+async-trait = "0.1.88"
+flagset = "0.4.7"
+rgb = "0.8.51"
 thiserror = "2.0.12"
-tokio = { version = "1.18.2", default-features = false, features = ["rt-multi-thread", "net", "sync", "io-util"] }
+tokio = { version = "1.46.1", default-features = false, features = ["rt-multi-thread", "net", "sync", "io-util"] }
 tracing = "0.1.41"
 
 [dev-dependencies]
-log = "0.4.1"
-simplelog = "0.12.0"
-tokio-test = "0.4.2"
-tokio = { version = "1.18.2", default-features = false, features = ["macros"] }
+log = "0.4.27"
+simplelog = "0.12.2"
+tokio-test = "0.4.4"
+tokio = { version = "1.46.1", default-features = false, features = ["macros"] }
 tracing-test = "0.2.5"

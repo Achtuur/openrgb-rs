@@ -43,31 +43,32 @@ impl<'a> ReceivedMessage<'a> {
 
     #[inline]
     pub fn read_u8(&mut self) -> OpenRgbResult<u8> {
-        if self.available_buf().is_empty() {
+        let b = self.available_buf();
+        if b.len() < size_of::<u8>() {
             return Err(OpenRgbError::ProtocolError("Not enough bytes to read u8".to_string()));
         }
         let byte = self.buf[self.idx];
-        self.idx += 1;
+        self.idx += size_of::<u8>();
         Ok(byte)
     }
 
     pub fn read_u16(&mut self) -> OpenRgbResult<u16> {
         let b = self.available_buf();
-        if b.len() < 2 {
+        if b.len() < size_of::<u16>() {
             return Err(OpenRgbError::ProtocolError("Not enough bytes to read u16".to_string()));
         }
         let value = u16::from_le_bytes([b[0], b[1]]);
-        self.idx += 2;
+        self.idx += size_of::<u16>();
         Ok(value)
     }
 
     pub fn read_u32(&mut self) -> OpenRgbResult<u32> {
         let b = self.available_buf();
-        if b.len() < 4 {
-            return Err(OpenRgbError::ProtocolError("Not enough bytes to read u16".to_string()));
+        if b.len() < size_of::<u32>() {
+            return Err(OpenRgbError::ProtocolError("Not enough bytes to read u32".to_string()));
         }
         let value = u32::from_le_bytes([b[0], b[1], b[2], b[3]]);
-        self.idx += 4;
+        self.idx += size_of::<u32>();
         Ok(value)
     }
 
