@@ -24,42 +24,42 @@ impl<T: SerToBuf> SerToBuf for Vec<T> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::error::Error;
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, fmt::Write};
 
-//     use tokio_test::io::Builder;
 
-//     use crate::protocol::tests::setup;
+    use crate::WriteMessage;
 
-//     #[tokio::test]
-//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
+    #[tokio::test]
+    async fn test_read_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+        .push_value(&3_u16)? // length
+        .push_value(&37_u8)?
+        .push_value(&54_u8)?
+        .push_value(&126_u8)?
+        .to_received_msg();
 
-//         let mut stream = Builder::new()
-//             .read(&3_u16.to_le_bytes())
-//             .read(&[37_u8, 54_u8, 126_u8])
-//             .build();
+        assert_eq!(
+            msg.read_value::<Vec<u8>>()?,
+            vec![37_u8, 54_u8, 126_u8]
+        );
 
-//         assert_eq!(
-//             stream.read_value::<Vec<u8>>().await?,
-//             vec![37_u8, 54_u8, 126_u8]
-//         );
+        Ok(())
+    }
 
-//         Ok(())
-//     }
+    #[tokio::test]
+    async fn test_write_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        buf.write_value(&vec![1_u8, 2_u8, 3_u8])?;
+        let mut msg = buf.to_received_msg();
 
-//     #[tokio::test]
-//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
+        assert_eq!(msg.read_value::<u16>()?, 3);
+        assert_eq!(msg.read_value::<u8>()?, 1);
+        assert_eq!(msg.read_value::<u8>()?, 2);
+        assert_eq!(msg.read_value::<u8>()?, 3);
 
-//         let mut stream = Builder::new()
-//             .write(&3_u16.to_le_bytes())
-//             .write(&[37_u8, 54_u8, 126_u8])
-//             .build();
-
-//         stream.write_value(&vec![37_u8, 54_u8, 126_u8]).await?;
-
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}

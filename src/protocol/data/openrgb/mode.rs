@@ -1,15 +1,131 @@
-use flagset::FlagSet;
+use flagset::{flags, FlagSet};
 
 use crate::data::ProtocolOption;
 use crate::protocol::{DeserFromBuf, SerToBuf, WriteMessage};
-use crate::OpenRgbError::ProtocolError;
+use crate::OpenRgbError::{self, ProtocolError};
+use crate::{impl_enum_discriminant, ReceivedMessage};
 use crate::{
     OpenRgbResult,
     protocol::data::{
-        Color, ColorMode, Direction,
-        ModeFlag::{self},
+        Color,
     },
 };
+
+
+flags! {
+    /// RGB controller mode flags.
+    ///
+    /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation) for more information.
+    pub enum ModeFlag: u32 {
+        /// Mode has speed parameter.
+        HasSpeed = 1 << 0,
+
+        /// Mode has left/right parameter.
+        HasDirectionLR = 1 << 1,
+
+        /// Mode has up/down parameter.
+        HasDirectionUD = 1 << 2,
+
+        /// Mode has horiz/vert parameter.
+        HasDirectionHV = 1 << 3,
+
+        /// Mode has direction parameter.
+        HasDirection = (ModeFlag::HasDirectionLR | ModeFlag::HasDirectionUD | ModeFlag::HasDirectionHV).bits(),
+
+        /// Mode has brightness parameter.
+        HasBrightness = 1 << 4,
+
+        /// Mode has per-LED colors.
+        HasPerLEDColor = 1 << 5,
+
+        /// Mode has mode specific colors.
+        HasModeSpecificColor = 1 << 6,
+
+        /// Mode has random color option.
+        HasRandomColor = 1 << 7,
+
+        /// Mode can manually be saved.
+        ManualSave = 1 << 8,
+
+        /// Mode automatically saves.
+        AutomaticSave = 1 << 9,
+    }
+}
+
+impl DeserFromBuf for FlagSet<ModeFlag> {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+        let value = buf.read_u32()?;
+        FlagSet::<ModeFlag>::new(value).map_err(|e| {
+            OpenRgbError::ProtocolError(format!(
+                "Received invalid mode flag set: {value} ({e})"
+            ))
+        })
+    }
+}
+
+impl SerToBuf for FlagSet<ModeFlag> {
+    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
+        buf.write_u32(self.bits());
+        Ok(())
+    }
+}
+
+
+/// Direction for [Mode](crate::data::Mode).
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Default)]
+pub enum Direction {
+    /// Left direction.
+    #[default]
+    Left = 0,
+
+    /// Right direction.
+    Right = 1,
+
+    /// Up direction.
+    Up = 2,
+
+    /// Down direction.
+    Down = 3,
+
+    /// Horizontal direction.
+    Horizontal = 4,
+
+    /// Vertical direction.
+    Vertical = 5,
+}
+
+impl_enum_discriminant!(
+    Direction,
+    Left: 0,
+    Right: 1,
+    Up: 2,
+    Down: 3,
+    Horizontal: 4,
+    Vertical: 5
+);
+
+
+/// RGB controller color mode.
+///
+/// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation) for more information.
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Default)]
+pub enum ColorMode {
+    /// No color mode.
+    #[default]
+    None = 0,
+
+    /// Per LED colors.
+    PerLED = 1,
+
+    /// Mode specific colors.
+    ModeSpecific = 2,
+
+    /// Random colors.
+    Random = 3,
+}
+
+impl_enum_discriminant!(ColorMode, None: 0, PerLED: 1, ModeSpecific: 2, Random: 3);
+
 
 /// RGB controller mode.
 ///
@@ -138,7 +254,7 @@ impl ModeData {
 }
 
 impl DeserFromBuf for ModeData {
-    fn deserialize(buf: &mut crate::protocol::serialize::ReceivedMessage<'_>) -> OpenRgbResult<Self> {
+    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
         let name = buf.read_value()?;
         let value = buf.read_value()?;
         let flags = buf.read_value()?;
@@ -194,6 +310,91 @@ impl SerToBuf for ModeData {
         Ok(())
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+
+    use flagset::FlagSet;
+
+    use crate::{data::{ColorMode, Direction}, protocol::data::ModeFlag, WriteMessage};
+    use ModeFlag::*;
+
+
+    #[tokio::test]
+    async fn test_read_flag() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&154_u32)?
+            .to_received_msg();
+
+        assert_eq!(
+            msg.read_value::<FlagSet<ModeFlag>>()?,
+            HasDirectionLR | HasDirectionHV | HasBrightness | HasRandomColor
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_write_flag() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&(ModeFlag::HasBrightness | ModeFlag::HasSpeed))?
+            .to_received_msg();
+
+        assert_eq!(
+            msg.read_value::<u32>()?,
+            (1 << 4) | (1 << 0)
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_dir() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&3_u32)?
+            .to_received_msg();
+
+        assert_eq!(msg.read_value::<Direction>()?, Direction::Down);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_write_dir() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&Direction::Down)?
+            .to_received_msg();
+        assert_eq!(msg.read_value::<u32>()?, 3);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read_color_mode() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&3_u32)?
+            .to_received_msg();
+
+        assert_eq!(msg.read_value::<ColorMode>()?, ColorMode::Random);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_write_color_mode() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&ColorMode::Random)?
+            .to_received_msg();
+        assert_eq!(msg.read_value::<u32>()?, 3);
+        Ok(())
+    }
+}
+
 
 // #[cfg(test)]
 // mod tests {

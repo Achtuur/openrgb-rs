@@ -1,6 +1,8 @@
 use std::io::Write;
 
 use crate::OpenRgbResult;
+#[cfg(test)]
+use crate::ReceivedMessage;
 
 /// Serialize an object to a byte buffer.
 pub(crate) trait SerToBuf {
@@ -72,6 +74,11 @@ impl WriteMessage {
     pub fn push_value<T: SerToBuf>(&mut self, value: &T) -> OpenRgbResult<&mut Self> {
         self.write_value(value)?;
         Ok(self)
+    }
+
+    #[cfg(test)]
+    pub fn to_received_msg(&self) -> ReceivedMessage<'_> {
+        ReceivedMessage::new(&self.buf, self.protocol_version)
     }
 }
 

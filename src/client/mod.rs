@@ -2,15 +2,16 @@
 
 mod controller;
 mod zone;
+mod command;
+mod group;
+mod segment;
 
 pub use {controller::*, zone::*};
 
 use tokio::net::ToSocketAddrs;
 
 use crate::{
-    Color,
-    error::OpenRgbResult,
-    protocol::{DEFAULT_ADDR, OpenRgbProtocol, data::ModeData},
+    client::group::ControllerGroup, data::DeviceType, error::OpenRgbResult, protocol::{data::ModeData, OpenRgbProtocol, DEFAULT_ADDR}, Color, OpenRgbError
 };
 
 pub struct OpenRgbClientWrapper {
@@ -67,18 +68,28 @@ impl OpenRgbClientWrapper {
 }
 
 impl OpenRgbClientWrapper {
-    pub async fn get_all_controllers(&mut self) -> OpenRgbResult<Vec<Controller>> {
-        let count = self.proto.get_controller_count().await?;
+    pub async fn get_all_controllers(&self) -> OpenRgbResult<ControllerGroup> {
+        let count = self.proto.get_controller_count().await? as usize;
         let mut controllers = Vec::with_capacity(count as usize);
         for id in 0..count {
             let controller = self.get_controller(id).await?;
             controllers.push(controller);
         }
-        Ok(controllers)
+        Ok(ControllerGroup::new(controllers))
     }
 
-    pub async fn get_controller(&mut self, i: u32) -> OpenRgbResult<Controller> {
-        let c_data = self.proto.get_controller(i).await?;
+    pub async fn get_controllers_of_type(&self, device_type: DeviceType) -> OpenRgbResult<ControllerGroup> {
+        let group = self.get_all_controllers().await?;
+        group
+        .split_per_type()
+        .remove(&device_type)
+        .ok_or(OpenRgbError::CommandError(format!(
+            "No controllers of type {device_type:?} found"
+        )))
+    }
+
+    pub async fn get_controller(&self, i: usize) -> OpenRgbResult<Controller> {
+        let c_data = self.proto.get_controller(i as u32).await?;
         Ok(Controller::new(i, self.proto.clone(), c_data))
     }
 }

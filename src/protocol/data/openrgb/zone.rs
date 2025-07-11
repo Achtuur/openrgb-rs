@@ -1,11 +1,29 @@
 use array2d::Array2D;
 
 use crate::protocol::{DeserFromBuf, ReceivedMessage};
-use crate::OpenRgbResult;
-use crate::protocol::data::ZoneType;
+use crate::{impl_enum_discriminant, OpenRgbError, OpenRgbResult, SerToBuf, WriteMessage};
 use crate::protocol::data::ProtocolOption;
 
 use super::SegmentData;
+
+
+/// RGB controller [Zone](crate::data::Zone) type.
+///
+/// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#zone-data) for more information.
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum ZoneType {
+    /// Single zone.
+    Single = 0,
+
+    /// Linear zone.
+    Linear = 1,
+
+    /// Matrix zone.
+    Matrix = 2,
+}
+
+impl_enum_discriminant!(ZoneType, Single: 0, Linear: 1, Matrix: 2);
+
 
 /// RGB controller zone.
 ///
@@ -83,6 +101,34 @@ impl DeserFromBuf for ZoneData {
             segments,
             flags,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+
+    use crate::{data::{DeviceType, ZoneType}, protocol::data::ColorMode, WriteMessage};
+
+    #[tokio::test]
+    async fn test_read_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&1_u32)?
+            .to_received_msg();
+
+        assert_eq!(msg.read_value::<ZoneType>()?, ZoneType::Linear);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_write_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&ZoneType::Linear)?
+            .to_received_msg();
+        assert_eq!(msg.read_value::<u32>()?, 1);
+        Ok(())
     }
 }
 

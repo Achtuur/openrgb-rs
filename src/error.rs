@@ -43,4 +43,8 @@ pub enum OpenRgbError {
         /// Minimum required protocol version to use operation.
         min_protocol_version: u32,
     },
+
+    /// Command was given invalid parameters
+    #[error("Invalid command: {0}")]
+    CommandError(String),
 }

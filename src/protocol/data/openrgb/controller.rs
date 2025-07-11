@@ -54,8 +54,10 @@ pub struct ControllerData {
     /// Minimum protocol version: 5
     pub flags: ProtocolOption<5, u32>,
 
+    /* NOT IN PROTOCOL, BUT USEFUL */
     /// not in protocol, but given by the request used to get this controller
     pub id: u32,
+    pub num_leds: usize,
 }
 
 impl DeserFromBuf for ControllerData {
@@ -77,8 +79,10 @@ impl DeserFromBuf for ControllerData {
         }
 
         let mut zones = buf.read_value::<Vec<ZoneData>>()?;
+        let mut num_leds = 0;
         for (idx, zone) in zones.iter_mut().enumerate() {
             zone.id = idx as u32;
+            num_leds += zone.leds_count as usize;
         }
 
         let leds = buf.read_value()?;
@@ -103,6 +107,7 @@ impl DeserFromBuf for ControllerData {
             led_alt_names,
             flags,
             id: u32::MAX,
+            num_leds,
         })
     }
 }

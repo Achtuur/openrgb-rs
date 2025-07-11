@@ -24,7 +24,7 @@ pub(crate) const MAGIC: [u8; 4] = *b"ORGB";
 ///
 /// Todo: reintroduce a generic `stream` type to support sync/async streams.
 #[derive(Clone)]
-pub struct OpenRgbProtocol {
+pub(crate) struct OpenRgbProtocol {
     protocol_id: u32,
     stream: Arc<Mutex<Stream2>>,
 }
@@ -154,7 +154,7 @@ impl OpenRgbProtocol {
     /// Get controller data. This also caches the obtained controller.
     ///
     /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation#net_packet_id_request_controller_data) for more information.
-    pub async fn get_controller(&mut self, controller_id: u32) -> OpenRgbResult<ControllerData> {
+    pub async fn get_controller(&self, controller_id: u32) -> OpenRgbResult<ControllerData> {
         let mut c: ControllerData = self
             .stream
             .lock()

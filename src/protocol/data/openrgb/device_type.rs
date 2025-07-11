@@ -4,52 +4,38 @@ use crate::{impl_enum_discriminant, OpenRgbResult, ReceivedMessage, WriteMessage
 /// RGB controller device type.
 ///
 /// See [Open SDK documentation](https://gitlab.com/CalcProgrammer1/OpenRGB/-/wikis/OpenRGB-SDK-Documentation) for more information.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Hash)]
 pub enum DeviceType {
     /// Motherboard.
     Motherboard = 0,
-
-    /// DRAM.
+    /// DRAM
     DRam = 1,
-
-    /// GPU.
+    /// GPU
     Gpu = 2,
-
-    /// Cooler.
+    /// Cooler
     Cooler = 3,
-
-    /// LED strip.
+    /// LED strip
     LEDStrip = 4,
-
-    /// Keyboard.
+    /// Keyboard
     Keyboard = 5,
-
-    /// Mouse.
+    /// Mouse
     Mouse = 6,
-
-    /// Mouse mat.
+    /// Mouse mat
     MouseMat = 7,
-
-    /// Headset.
+    /// Headset
     Headset = 8,
-
-    /// Headset stand.
+    /// Headset stand
     HeadsetStand = 9,
-
-    /// Gamepad.
+    /// Gamepad
     Gamepad = 10,
-
-    /// Light.
+    /// Light
     Light = 11,
-
-    /// Speaker.
+    /// Speaker
     Speaker = 12,
-
-    /// Virtual.
+    /// Virtual
     Virtual = 13,
-
-    /// Unknown.
-    Unknown = -1,
+    /// Unknown
+    Unknown = 14,
 }
 
 impl_enum_discriminant!(DeviceType,
@@ -70,53 +56,30 @@ impl_enum_discriminant!(DeviceType,
     Unknown: 14
 );
 
-impl DeserFromBuf for DeviceType {
-    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
-        let device_type_raw = buf.read_u32()?;
-        let device_type = DeviceType::try_from(device_type_raw).unwrap_or(DeviceType::Unknown);
-        Ok(device_type)
-    }
-}
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
 
-impl SerToBuf for DeviceType {
-    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
-        let num = u32::from(self);
-        buf.write_u32(num);
+    use crate::{data::DeviceType, protocol::data::ColorMode, WriteMessage};
+
+    #[tokio::test]
+    async fn test_read_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&3_u32)?
+            .to_received_msg();
+
+        assert_eq!(msg.read_value::<DeviceType>()?, DeviceType::Cooler);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_write_001() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+            .push_value(&DeviceType::Cooler)?
+            .to_received_msg();
+        assert_eq!(msg.read_value::<u32>()?, 3);
         Ok(())
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use std::error::Error;
-
-//     use tokio_test::io::Builder;
-
-//     use crate::protocol::data::DeviceType;
-//     use crate::protocol::tests::setup;
-
-//     #[tokio::test]
-//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().read(&8_u32.to_le_bytes()).build();
-
-//         assert_eq!(
-//             stream.read_value::<DeviceType>().await?,
-//             DeviceType::Headset
-//         );
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().write(&8_u32.to_le_bytes()).build();
-
-//         stream.write_value(&DeviceType::Headset).await?;
-
-//         Ok(())
-//     }
-// }

@@ -10,6 +10,20 @@ pub struct SegmentData {
     led_count: u32,
 }
 
+impl SegmentData {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn led_count(&self) -> u32 {
+        self.led_count
+    }
+
+    pub fn offset(&self) -> u32 {
+        self.start_idx
+    }
+}
+
 impl DeserFromBuf for SegmentData {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
         if buf.protocol_version() < 4 {

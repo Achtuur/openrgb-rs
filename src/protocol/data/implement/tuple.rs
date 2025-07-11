@@ -32,49 +32,30 @@ impl_tuple!(0 A, 1 B, 2 C, 3 D, 4 E);
 
 
 
-// #[cfg(test)]
-// mod tests {
-//     use std::error::Error;
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
 
-//     use tokio_test::io::Builder;
+    use tokio_test::io::Builder;
 
-//     use crate::protocol::data::DeviceType;
-//     use crate::protocol::tests::setup;
+    use crate::protocol::data::DeviceType;
+    use crate::WriteMessage;
 
-//     #[tokio::test]
-//     async fn test_read_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
+    #[tokio::test]
+    async fn test_ser_deser_tuple() -> Result<(), Box<dyn Error>> {
+        let mut buf = WriteMessage::new(crate::DEFAULT_PROTOCOL);
+        let mut msg = buf
+        .push_value(&37_u8)?
+        .push_value(&1337_u32)?
+        .push_value(&(-1337_i32))?
+        .push_value(&4_u32)?
+        .to_received_msg();
 
-//         let mut stream = Builder::new()
-//             .read(&37_u8.to_le_bytes())
-//             .read(&1337_u32.to_le_bytes())
-//             .read(&(-1337_i32).to_le_bytes())
-//             .read(&4_u32.to_le_bytes())
-//             .build();
+        assert_eq!(
+            msg.read_value::<(u8, u32, i32, DeviceType)>()?,
+            (37, 1337, -1337, DeviceType::LEDStrip)
+        );
 
-//         assert_eq!(
-//             stream.read_value::<(u8, u32, i32, DeviceType)>().await?,
-//             (37, 1337, -1337, DeviceType::LEDStrip)
-//         );
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new()
-//             .write(&37_u8.to_le_bytes())
-//             .write(&1337_u32.to_le_bytes())
-//             .write(&(-1337_i32).to_le_bytes())
-//             .write(&4_u32.to_le_bytes())
-//             .build();
-
-//         stream
-//             .write_value(&(37_u8, 1337_u32, (-1337_i32), DeviceType::LEDStrip))
-//             .await?;
-
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}

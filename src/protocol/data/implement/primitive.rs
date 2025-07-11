@@ -69,139 +69,87 @@ impl SerToBuf for i32 {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::error::Error;
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+    use crate::{ReceivedMessage, WriteMessage, DEFAULT_PROTOCOL};
 
-//     use tokio_test::io::Builder;
+    #[tokio::test]
+    async fn test_read_void_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = ReceivedMessage::new(&[0, 1, 2, 3, 4], DEFAULT_PROTOCOL);
+        let _: () = msg.read_value()?;
+        Ok(())
+    }
 
-//     use crate::protocol::tests::setup;
+    #[tokio::test]
+    async fn test_write_void_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = WriteMessage::new(DEFAULT_PROTOCOL);
+        msg.write_value(&())?;
+        Ok(())
+    }
 
-//     #[tokio::test]
-//     async fn test_read_void_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-//         let stream = Builder::new().build();
-//         Ok(())
-//     }
+    #[tokio::test]
+    async fn test_read_u8_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = ReceivedMessage::new(&[0, 1, 2, 3, 4], DEFAULT_PROTOCOL);
+        assert_eq!(msg.read_u8()?, 0);
+        assert_eq!(msg.read_value::<u8>()?, 1);
+        Ok(())
+    }
 
-//     #[tokio::test]
-//     async fn test_write_void_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
+    #[tokio::test]
+    async fn test_write_u8_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = WriteMessage::new(DEFAULT_PROTOCOL);
+        msg.write_u8(37);
+        msg.write_value(&37)?;
+        Ok(())
+    }
 
-//         let mut stream = Builder::new().build();
+    #[tokio::test]
+    async fn test_read_u16_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = ReceivedMessage::new(&[0, 1, 2, 3, 4], DEFAULT_PROTOCOL);
+        assert_eq!(msg.read_u16()?, u16::from_le_bytes([0, 1]));
+        assert_eq!(msg.read_value::<u16>()?, u16::from_le_bytes([2, 3]));
+        assert!(msg.read_value::<u16>().is_err()); // not enough data
+        Ok(())
+    }
 
-//         stream.write_value(&()).await?;
+    #[tokio::test]
+    async fn test_write_u16_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = WriteMessage::new(DEFAULT_PROTOCOL);
+        msg.write_u16(37);
+        msg.write_value(&37_u16)?;
+        Ok(())
+    }
 
-//         Ok(())
-//     }
+    #[tokio::test]
+    async fn test_read_u32_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = ReceivedMessage::new(&[0, 1, 2, 3, 4], DEFAULT_PROTOCOL);
+        assert_eq!(msg.read_u32()?, u32::from_le_bytes([0, 1, 2, 3]));
+        assert!(msg.read_value::<u32>().is_err()); // not enough data
+        Ok(())
+    }
 
-//     #[tokio::test]
-//     async fn test_read_u8_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
+    #[tokio::test]
+    async fn test_write_u32_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = WriteMessage::new(DEFAULT_PROTOCOL);
+        msg.write_u32(37);
+        msg.write_value(&37_u32)?;
+        Ok(())
+    }
 
-//         let mut stream = Builder::new().read(&[37_u8]).build();
+    #[tokio::test]
+    async fn test_read_i32_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = ReceivedMessage::new(&[0, 1, 2, 3, 4], DEFAULT_PROTOCOL);
+        assert_eq!(msg.read_u32()? as i32, i32::from_le_bytes([0, 1, 2, 3]));
+        assert!(msg.read_value::<i32>().is_err()); // not enough data
+        Ok(())
+    }
 
-//         assert_eq!(stream.read_value::<u8>().await?, 37);
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_u8_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().write(&[37_u8]).build();
-
-//         stream.write_value(&37_u8).await?;
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_read_u16_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().read(&37_u16.to_le_bytes()).build();
-
-//         assert_eq!(stream.read_value::<u16>().await?, 37);
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_u16_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().write(&37_u16.to_le_bytes()).build();
-
-//         stream.write_value(&37_u16).await?;
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_read_u32_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().read(&185851_u32.to_le_bytes()).build();
-
-//         assert_eq!(stream.read_value::<u32>().await?, 185851);
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_u32_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().write(&185851_u32.to_le_bytes()).build();
-
-//         stream.write_value(&185851_u32).await?;
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_read_i32_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().read(&(-185851_i32).to_le_bytes()).build();
-
-//         assert_eq!(stream.read_value::<i32>().await?, -185851_i32);
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_i32_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().write(&(-185851_i32).to_le_bytes()).build();
-
-//         stream.write_value(&-185851_i32).await?;
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_read_usize_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().read(&185851_u32.to_le_bytes()).build();
-
-//         assert_eq!(stream.read_value::<usize>().await?, 185851_usize);
-
-//         Ok(())
-//     }
-
-//     #[tokio::test]
-//     async fn test_write_usize_001() -> Result<(), Box<dyn Error>> {
-//         setup()?;
-
-//         let mut stream = Builder::new().write(&185851_u32.to_le_bytes()).build();
-
-//         stream.write_value(&185851_usize).await?;
-
-//         Ok(())
-//     }
-// }
+    #[tokio::test]
+    async fn test_write_i32_001() -> Result<(), Box<dyn Error>> {
+        let mut msg = WriteMessage::new(DEFAULT_PROTOCOL);
+        msg.write_u32(37_i32 as u32);
+        msg.write_value(&37_i32)?;
+        Ok(())
+    }
+}

@@ -12,6 +12,13 @@ pub use implement::*;
 pub use openrgb::*;
 pub use protocol_option::*;
 
+/// Implements traits for C-style enums with discriminants. Following traits are implemented:
+///
+/// * `TryFrom<u32>` using given arguments
+/// * `From<$enum> for u32` using given arguments
+/// * `DeserFromBuf`
+/// * `SerToBuf`
+///
 /// Implements `TryFrom<u32>` and `From<$enum> for u32` for an enum with discriminants.
 ///
 /// Previously this was derived using the Primitive crate, but that's a lot of overhead for such a simple feature
@@ -27,7 +34,7 @@ macro_rules! impl_enum_discriminant {
                         $value => Ok($enum::$var),
                     )+
                     _ => Err($crate::OpenRgbError::ProtocolError(format!(
-                        "unknown discriminant value {} for {}", value, stringify!($enum)
+                        "Unknown discriminant value {} for {}", value, stringify!($enum)
                     )))
                 }
             }
@@ -48,6 +55,21 @@ macro_rules! impl_enum_discriminant {
                         $enum::$var => $value,
                     )+
                 }
+            }
+        }
+
+        impl $crate::protocol::DeserFromBuf for $enum {
+            fn deserialize(buf: &mut $crate::protocol::ReceivedMessage<'_>) -> $crate::OpenRgbResult<Self> {
+                let raw = buf.read_u32()?;
+                $enum::try_from(raw)
+            }
+        }
+
+        impl $crate::protocol::SerToBuf for $enum {
+            fn serialize(&self, buf: &mut $crate::protocol::WriteMessage) -> $crate::OpenRgbResult<()> {
+                let num = u32::from(self);
+                buf.write_u32(num);
+                Ok(())
             }
         }
     }

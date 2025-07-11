@@ -86,21 +86,6 @@ impl_enum_discriminant!(
     RGBControllerSaveMode: 1102
 );
 
-impl DeserFromBuf for PacketId {
-    fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
-        let packet_id_raw = buf.read_u32()?;
-        PacketId::try_from(packet_id_raw)
-    }
-}
-
-impl SerToBuf for PacketId {
-    fn serialize(&self, buf: &mut WriteMessage) -> OpenRgbResult<()> {
-        let num = u32::from(self);
-        buf.write_u32(num);
-        Ok(())
-    }
-}
-
 // #[cfg(test)]
 // mod tests {
 //     use std::error::Error;

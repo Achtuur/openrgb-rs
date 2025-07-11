@@ -7,4 +7,4 @@ mod string;
 mod tuple;
 mod vec;
 
-pub use string::*;
+pub(crate) use string::*;

@@ -10,7 +10,7 @@ impl<T: SerToBuf, const N: usize> SerToBuf for [T; N] {
     }
 }
 
-impl <T: Copy + Default + DeserFromBuf + Sized, const N: usize> DeserFromBuf for [T; N] {
+impl <T: DeserFromBuf, const N: usize> DeserFromBuf for [T; N] {
     fn deserialize(buf: &mut ReceivedMessage<'_>) -> OpenRgbResult<Self> {
         let mut arr = [const { MaybeUninit::<T>::uninit() }; N];
 
@@ -33,11 +33,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_deser_array() {
+    fn test_read_array() {
         let mut message = ReceivedMessage::new(&[0, 1, 2, 3, 4, 5], DEFAULT_PROTOCOL);
         let arr: [u8; 3] = message.read_value().unwrap();
         assert_eq!(arr, [0, 1, 2]);
         let arr2: [u8; 3] = message.read_value().unwrap();
         assert_eq!(arr2, [3, 4, 5]);
+        assert!(message.read_value::<[u8; 3]>().is_err());
+    }
+
+    #[tokio::test]
+    async fn test_write_array() -> OpenRgbResult<()> {
+        let mut msg = WriteMessage::new(DEFAULT_PROTOCOL);
+        msg.write_value(&[42; 5])?;
+        Ok(())
     }
 }
