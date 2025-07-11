@@ -1,7 +1,6 @@
-use std::mem::size_of;
 
 use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
-use crate::{OpenRgbError, OpenRgbResult};
+use crate::OpenRgbResult;
 
 
 impl DeserFromBuf for () {

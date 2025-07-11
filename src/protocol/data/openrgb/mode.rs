@@ -2,7 +2,7 @@ use flagset::{flags, FlagSet};
 
 use crate::data::ProtocolOption;
 use crate::protocol::{DeserFromBuf, SerToBuf, WriteMessage};
-use crate::OpenRgbError::{self, ProtocolError};
+use crate::OpenRgbError::{self};
 use crate::{impl_enum_discriminant, ReceivedMessage};
 use crate::{
     OpenRgbResult,

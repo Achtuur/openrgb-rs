@@ -1,5 +1,5 @@
 use crate::{
-    client::{command::{UpdateCommand, UpdateLedCommand}, segment::Segment}, data::ZoneData, Color, Controller, OpenRgbError, OpenRgbProtocol, OpenRgbResult
+    client::{command::UpdateCommand, segment::Segment}, data::ZoneData, Color, Controller, OpenRgbError, OpenRgbResult
 };
 
 pub struct Zone<'a> {
@@ -31,7 +31,7 @@ impl<'a> Zone<'a> {
         self.controller
         .data()
         .zones
-        .get(self.zone_id as usize)
+        .get(self.zone_id)
         .expect("Invalid zone was created") // should be unreachable
     }
 

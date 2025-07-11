@@ -1,4 +1,3 @@
-use flagset::FlagSet;
 
 use crate::{
     client::command::UpdateLedCommand, data::{ModeData, ModeFlag}, protocol::{
@@ -6,7 +5,7 @@ use crate::{
     }, OpenRgbError, OpenRgbResult
 };
 
-use super::{zone, Zone};
+use super::Zone;
 
 pub struct Controller {
     id: usize,
@@ -41,7 +40,7 @@ impl Controller {
     }
 
     pub fn id(&self) -> usize {
-        self.id as usize
+        self.id
     }
 
     pub fn name(&self) -> &str {

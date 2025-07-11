@@ -238,7 +238,7 @@ impl<'a> UpdateLedCommand<'a> {
         if self.colors.len() < len {
             self.colors.resize(len, Color::default());
         }
-        self.colors[offset..len].copy_from_slice(&colors);
+        self.colors[offset..len].copy_from_slice(colors);
         Ok(())
     }
 }

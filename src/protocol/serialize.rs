@@ -1,8 +1,7 @@
-use std::{io::{Cursor, Read, Write}, pin::Pin};
+use std::io::Write;
 
-use tokio::{io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt}, net::{TcpStream, ToSocketAddrs}};
 
-use crate::{OpenRgbError, OpenRgbResult, PacketId, DEFAULT_PROTOCOL};
+use crate::{OpenRgbError, OpenRgbResult};
 
 
 /// Deserialize an object from a byte buffer.

@@ -5,7 +5,7 @@ use openrgb::{Color, OpenRgbClientWrapper};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // connect to local server
-    let mut client = OpenRgbClientWrapper::connect().await?;
+    let client = OpenRgbClientWrapper::connect().await?;
 
     let controllers = client.get_all_controllers().await?;
     for c in controllers {

@@ -1,5 +1,4 @@
-use crate::protocol::{DeserFromBuf, SerToBuf};
-use crate::{impl_enum_discriminant, OpenRgbResult, ReceivedMessage, WriteMessage};
+use crate::impl_enum_discriminant;
 
 /// RGB controller device type.
 ///

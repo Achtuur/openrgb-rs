@@ -64,8 +64,7 @@ impl OpenRgbMessageHeader {
         let magic = recv.read_value::<[u8; 4]>()?;
         if magic != Self::MAGIC {
             return Err(OpenRgbError::ProtocolError(format!(
-                "expected OpenRGB magic value, got {:?}",
-                magic
+                "expected OpenRGB magic value, got {magic:?}"
             )));
         }
 

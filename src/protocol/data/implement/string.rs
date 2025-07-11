@@ -1,5 +1,4 @@
 use std::io::Read;
-use std::mem::size_of;
 
 use crate::protocol::{DeserFromBuf, ReceivedMessage, SerToBuf, WriteMessage};
 use crate::{OpenRgbError, OpenRgbResult};
@@ -13,7 +12,7 @@ impl DeserFromBuf for String {
         buf.read_exact(&mut bytes)?;
         bytes.pop(); // null byte?
         String::from_utf8(bytes).map_err(|e| {
-            OpenRgbError::ProtocolError(format!("Failed decoding string as UTF-8: {}", e))
+            OpenRgbError::ProtocolError(format!("Failed decoding string as UTF-8: {e}"))
         })
     }
 }

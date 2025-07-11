@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Index};
 
-use crate::{client::command::UpdateLedCommandGroup, data::DeviceType, Color, Controller, OpenRgbError, OpenRgbResult};
+use crate::{client::command::UpdateLedCommandGroup, data::DeviceType, Controller, OpenRgbError, OpenRgbResult};
 
 
 pub trait ControllerIndex {
@@ -103,7 +103,7 @@ impl<'a> IntoIterator for &'a ControllerGroup {
 
 #[cfg(test)]
 mod tests {
-use crate::OpenRgbClientWrapper;
+use crate::{Color, OpenRgbClientWrapper};
 
 use super::*;
 

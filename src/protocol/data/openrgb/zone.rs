@@ -1,7 +1,7 @@
 use array2d::Array2D;
 
 use crate::protocol::{DeserFromBuf, ReceivedMessage};
-use crate::{impl_enum_discriminant, OpenRgbError, OpenRgbResult, SerToBuf, WriteMessage};
+use crate::{impl_enum_discriminant, OpenRgbResult};
 use crate::protocol::data::ProtocolOption;
 
 use super::SegmentData;

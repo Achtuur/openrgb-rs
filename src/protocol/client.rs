@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::net::Ipv4Addr;
 use std::sync::Arc;
 
@@ -84,7 +83,7 @@ impl OpenRgbProtocol {
         tracing::debug!("Connecting to OpenRGB server at {:?}...", addr);
         let stream = Stream2::connect(addr).await.map_err(|source| {
             OpenRgbError::ConnectionError {
-                addr: format!("{:?}", addr),
+                addr: format!("{addr:?}"),
                 source,
             }
         })?;
